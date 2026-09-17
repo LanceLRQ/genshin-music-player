@@ -213,7 +213,7 @@ export const useTransportStore = create<TransportState>()((set, get) => ({
   setLoop: (loop) => set({ loop }),
   setSpeed: (speed) => set({ speed }),
   setHumanizeMs: (humanizeMs) => set({ humanizeMs }),
-  resetForScore: (range, humanizeMs) =>
+  resetForScore: (range, humanizeMs) => {
     set({
       range,
       loop: false,
@@ -227,5 +227,8 @@ export const useTransportStore = create<TransportState>()((set, get) => ({
       previewPositionMs: 0,
       summary: null,
       progress: null,
-    }),
+    });
+    // 旧乐谱的试听可能仍在进行：先停掉，避免换谱后幽灵声播放到自然结束
+    previewPlayer.stop();
+  },
 }));

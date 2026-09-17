@@ -4,12 +4,11 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Slider } from '@/components/ui/slider';
 import { Switch } from '@/components/ui/switch';
-import type { Score } from '@/core/model/score';
 import { formatTime } from '@/lib/format';
 import { cn } from '@/lib/utils';
 import { useScoreStore } from '@/stores/scoreStore';
 import { useTransportStore } from '@/stores/transportStore';
-import { parseTimeInput } from './scoreInfo';
+import { parseTimeInput, scoreDurationMs } from './scoreInfo';
 
 /** 区间滑块与两次输入的最小间隔（毫秒） */
 export const MIN_RANGE_GAP_MS = 100;
@@ -78,7 +77,7 @@ export function RangeControls({ locked }: RangeControlsProps) {
   const range = useTransportStore((state) => state.range);
   const loop = useTransportStore((state) => state.loop);
   if (!score) return null;
-  const total = scoreDurationMsOf(score);
+  const total = scoreDurationMs(score);
   const setRange = (startMs: number, endMs: number) => useTransportStore.getState().setRange({ startMs, endMs });
   return (
     <div className="flex flex-col gap-2">
@@ -146,12 +145,5 @@ export function RangeControls({ locked }: RangeControlsProps) {
         </div>
       </div>
     </div>
-  );
-}
-
-function scoreDurationMsOf(score: Score): number {
-  return score.tracks.reduce(
-    (max, track) => track.notes.reduce((trackMax, note) => Math.max(trackMax, note.startMs + note.durationMs), max),
-    0,
   );
 }

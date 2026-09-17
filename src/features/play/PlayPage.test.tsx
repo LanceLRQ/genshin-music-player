@@ -111,6 +111,23 @@ describe('PlayPage', () => {
     );
   });
 
+  it('试听进行中点击单独演奏：先停止试听再开始单轨演奏', async () => {
+    const calls = mockBackend();
+    useScoreStore.getState().setScore(score);
+    useAdaptStore.getState().resetToRecommended(score, lyre);
+    const user = userEvent.setup();
+    render(<PlayPage />);
+    const soloButton = await screen.findByRole('button', { name: `单独演奏 ${score.tracks[0].name}` });
+    await waitFor(() => expect(soloButton).toBeEnabled());
+    // 挂载后再进入试听状态，避免触发挂载时的参数变化停止试听副作用
+    act(() => useTransportStore.setState({ previewing: true }));
+    await user.click(soloButton);
+    expect(vi.mocked(previewPlayer.stop)).toHaveBeenCalled();
+    expect(useTransportStore.getState().previewing).toBe(false);
+    expect(useTransportStore.getState().solo).toEqual({ mode: 'play', trackId: 't0' });
+    await waitFor(() => expect(calls).toContain('play'));
+  });
+
   it('演奏进行中导入菜单与目标乐器禁用', () => {
     useScoreStore.getState().setScore(score);
     useAdaptStore.getState().resetToRecommended(score, lyre);

@@ -285,6 +285,15 @@ describe('transportStore（参数与音量）', () => {
     randomSpy.mockRestore();
   });
 
+  it('resetForScore 停止进行中的试听，避免旧谱幽灵声继续播放', () => {
+    useTransportStore.setState({ previewing: true });
+    // 模块级 vi.fn 的调用记录会跨用例残留，先清空再断言本用例自身的行为
+    vi.mocked(previewPlayer.stop).mockClear();
+    useTransportStore.getState().resetForScore({ startMs: 0, endMs: 5000 }, 8);
+    expect(previewPlayer.stop).toHaveBeenCalled();
+    expect(useTransportStore.getState().previewing).toBe(false);
+  });
+
   it('setRange / setLoop / setSpeed / setHumanizeMs 保存参数', () => {
     useTransportStore.getState().setRange({ startMs: 200, endMs: 800 });
     useTransportStore.getState().setLoop(true);

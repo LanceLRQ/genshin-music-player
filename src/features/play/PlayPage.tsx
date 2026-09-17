@@ -230,8 +230,10 @@ export function PlayPage() {
     else void transport.stop();
   }, []);
 
-  /** 单轨试听 / 演奏（设计 01 第 4.10 节）；结束后由 transportStore 恢复主时间线 */
+  /** 单轨试听 / 演奏（设计 01 第 4.10 节）：开始前先停止整曲试听；结束后由 transportStore 恢复主时间线 */
   const handleSolo = useCallback(async (mode: SoloMode, trackId: string) => {
+    const transport = useTransportStore.getState();
+    if (transport.previewing) await transport.stopPreview();
     const currentScore = useScoreStore.getState().score;
     const currentProfile = useInstrumentStore
       .getState()
@@ -244,7 +246,6 @@ export function PlayPage() {
       toast.info('这条音轨在当前区间内没有可弹的音');
       return;
     }
-    const transport = useTransportStore.getState();
     if (mode === 'preview') transport.startPreview(currentProfile);
     else void transport.play();
   }, []);
