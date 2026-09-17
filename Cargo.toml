@@ -1,5 +1,5 @@
 [workspace]
-members = ["crates/player-core"]
+members = ["crates/player-core", "crates/gm-verify"]
 resolver = "3"
 
 [workspace.package]

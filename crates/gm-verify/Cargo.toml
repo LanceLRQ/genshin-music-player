@@ -1,0 +1,13 @@
+[package]
+name = "gm-verify"
+description = "Genshin Music Player 真机验证命令行工具"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[dependencies]
+player-core.workspace = true
+serde_json.workspace = true
+clap.workspace = true
