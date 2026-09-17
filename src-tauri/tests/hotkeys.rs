@@ -119,6 +119,20 @@ fn replace_failure_restores_old_hotkeys() {
 }
 
 #[test]
+fn replace_failure_reports_hotkeys_that_could_not_be_restored() {
+    let registrar = FakeRegistrar::occupied(&["F8"]).block_after_unregister(&["F9", "F10"]);
+    register_hotkeys(&registrar, &hotkeys("F9", "F10")).unwrap();
+    let error =
+        replace_hotkeys(&registrar, &hotkeys("F9", "F10"), &hotkeys("F7", "F8")).unwrap_err();
+    assert_eq!(error.code, AppErrorCode::HotkeyRegisterFailed);
+    assert_eq!(
+        error.message,
+        "热键「F8」注册失败，可能被其他程序占用，原热键「F9」、「F10」也未能恢复"
+    );
+    assert!(registrar.registered().is_empty());
+}
+
+#[test]
 fn replace_failure_does_not_restore_hotkeys_that_were_never_registered() {
     let registrar = FakeRegistrar::occupied(&["F9", "F8"]);
     assert_eq!(

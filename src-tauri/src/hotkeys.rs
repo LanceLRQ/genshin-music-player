@@ -95,7 +95,8 @@ pub fn register_on_startup(registrar: &impl HotkeyRegistrar, hotkeys: &Hotkeys) 
         .collect()
 }
 
-/// 保存设置时：先注销旧热键，再注册新热键；新热键注册失败时恢复原来注册成功的旧热键并返回错误
+/// 保存设置时：先注销旧热键，再注册新热键；新热键注册失败时恢复原来注册成功的旧热键并返回错误。
+/// 恢复本身也可能失败（旧热键此刻被其他程序占用），这类热键会追加进错误信息，避免用户以为旧热键仍然有效
 pub fn replace_hotkeys(
     registrar: &impl HotkeyRegistrar,
     old: &Hotkeys,
@@ -108,9 +109,20 @@ pub fn replace_hotkeys(
     for value in &previously_registered {
         let _ = registrar.unregister(value);
     }
-    register_hotkeys(registrar, new).inspect_err(|_| {
-        for value in &previously_registered {
-            let _ = registrar.register(value);
+    register_hotkeys(registrar, new).map_err(|mut error| {
+        let not_restored: Vec<&str> = previously_registered
+            .into_iter()
+            .filter(|value| registrar.register(value).is_err())
+            .collect();
+        if !not_restored.is_empty() {
+            let joined = not_restored
+                .iter()
+                .map(|value| format!("「{value}」"))
+                .collect::<Vec<_>>()
+                .join("、");
+            let original = error.message;
+            error.message = format!("{original}，原热键{joined}也未能恢复");
         }
+        error
     })
 }
