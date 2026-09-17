@@ -206,7 +206,7 @@ export function TextScoreDialog({ open, initialTab, preset, onOpenChange, onImpo
             )}
           </div>
         )}
-        <p className="text-xs text-muted-foreground">语法说明文档将在 M4 完成后提供链接。</p>
+        <p className="text-xs text-muted-foreground">键盘谱与简谱的语法说明见仓库 docs/formats/ 目录（keyscore.md、jianpu.md）。</p>
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             取消
