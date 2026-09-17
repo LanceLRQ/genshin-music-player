@@ -24,9 +24,11 @@ export function KeyCaptureButton({ value, onCapture }: KeyCaptureButtonProps) {
   useEffect(() => {
     if (!capturing) return;
     const onKeyDown = (event: KeyboardEvent) => {
-      // 捕获期间拦截事件，避免触发窗口内快捷键或页面默认行为
+      // 捕获期间拦截事件，避免触发窗口内快捷键或页面默认行为；
+      // 多个按钮同时处于捕获态时，它们都监听同一个 document 节点，
+      // stopImmediatePropagation 让先收到按键的实例拦住其余实例，避免一次按键写入多个键
       event.preventDefault();
-      event.stopPropagation();
+      event.stopImmediatePropagation();
       if (event.key === 'Escape') {
         setCapturing(false);
         setHint(null);

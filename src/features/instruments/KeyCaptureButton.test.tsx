@@ -50,4 +50,26 @@ describe('KeyCaptureButton', () => {
     render(<KeyCaptureButton value="Space" onCapture={() => undefined} />);
     expect(screen.getByText('Space')).toBeInTheDocument();
   });
+
+  it('两个按钮同时捕获时，一次按键只被先进入捕获态的按钮捕获', async () => {
+    const onCaptureA = vi.fn();
+    const onCaptureB = vi.fn();
+    const user = userEvent.setup();
+    render(
+      <>
+        <KeyCaptureButton value={null} onCapture={onCaptureA} />
+        <KeyCaptureButton value={null} onCapture={onCaptureB} />
+      </>,
+    );
+    const starts = screen.getAllByRole('button', { name: '未设置' });
+    await user.click(starts[0]);
+    await user.click(starts[1]);
+    expect(screen.getAllByText('请按下按键…（Esc 取消）')).toHaveLength(2);
+    fireEvent.keyDown(document, { code: 'KeyQ', key: 'q' });
+    expect(onCaptureA).toHaveBeenCalledTimes(1);
+    expect(onCaptureA).toHaveBeenCalledWith('KeyQ');
+    expect(onCaptureB).not.toHaveBeenCalled();
+    // 未抢到的按钮仍停留在捕获态
+    expect(screen.getAllByText('请按下按键…（Esc 取消）')).toHaveLength(1);
+  });
 });
