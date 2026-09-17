@@ -1,0 +1,37 @@
+# --- 通用 ---
+.DS_Store
+*.log
+.env
+.env.*
+!.env.example
+
+# --- Node / TypeScript / Vite ---
+node_modules/
+dist/
+coverage/
+.vite/
+*.tsbuildinfo
+
+# --- Rust / Tauri ---
+# Cargo.lock 保留入库（应用程序，不是库）
+target/
+src-tauri/gen/schemas/
+
+# --- IDE ---
+.idea/
+.vscode/*
+!.vscode/extensions.json
+
+# ============================================================
+# 文档治理
+# ============================================================
+
+# --- 内部设计讨论与调研记录（不进开源/公开仓库）---
+# 存放决策记录、阶段计划、审查报告、界面原型、测试素材等设计过程产物。
+# 定稿后需公开的设计规格放在 docs/superpowers/specs/，不在此排除。
+docs/_internal/
+
+# --- Claude Code / AI 编辑器相关（不入库）---
+.claude/
+CLAUDE.local.md
+AGENTS.md
