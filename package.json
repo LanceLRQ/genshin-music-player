@@ -12,7 +12,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
-    "tauri": "tauri"
+    "tauri": "tauri",
+    "gen:test-assets": "node scripts/gen-test-assets.ts"
   },
   "dependencies": {
     "@tauri-apps/api": "~2.11.1",

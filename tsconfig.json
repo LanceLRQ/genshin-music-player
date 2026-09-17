@@ -14,8 +14,9 @@
     "verbatimModuleSyntax": true,
     "skipLibCheck": true,
     "noEmit": true,
+    "allowImportingTsExtensions": true,
     "paths": { "@/*": ["./src/*"] },
     "types": ["vite/client", "node"]
   },
-  "include": ["src", "shared", "vite.config.ts", "vitest.config.ts"]
+  "include": ["src", "shared", "scripts", "vite.config.ts", "vitest.config.ts"]
 }

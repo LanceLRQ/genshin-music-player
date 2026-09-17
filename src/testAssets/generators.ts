@@ -24,8 +24,9 @@ export function buildScaleAsset(): GeneratedAsset {
   const beat = secondsPerBeat(bpm);
   const midi = new Midi();
   midi.header.setTempo(bpm);
+  // 各音轨名统一用 ASCII：@tonejs/midi 的 writeString 会把 UTF-16 码元截断为低字节，中文音轨名写进文件后是乱码
   const track = midi.addTrack();
-  track.name = 'C 大调音阶';
+  track.name = 'C Major Scale';
 
   const ascending: number[] = [];
   for (const octave of [3, 4, 5]) {
@@ -50,7 +51,7 @@ export function buildChordsAsset(): GeneratedAsset {
   const midi = new Midi();
   midi.header.setTempo(bpm);
   const track = midi.addTrack();
-  track.name = 'C 大调三和弦';
+  track.name = 'C Major Triads';
 
   const roots = [0, 1, 2, 3, 4, 5, 6, 0];
   const octaveOfIndex = (i: number) => (i === 7 ? 5 : 4);
@@ -75,7 +76,7 @@ export function buildRepeatAsset(): GeneratedAsset {
   const midi = new Midi();
   midi.header.setTempo(bpm);
   const track = midi.addTrack();
-  track.name = '连打测试';
+  track.name = 'Repeat Accelerando';
 
   const gapsMs = [200, 150, 100, 80, 60, 50, 40, 30, 20];
   let tMs = 0;
@@ -101,7 +102,7 @@ export function buildLongMelodyAsset(): GeneratedAsset {
   const midi = new Midi();
   midi.header.setTempo(bpm);
   const track = midi.addTrack();
-  track.name = '长曲测试';
+  track.name = 'Long Melody';
 
   for (let i = 0; i < totalNotes; i += 1) {
     const group = Math.floor(i / MOTIF_OFFSETS.length);
@@ -121,18 +122,18 @@ export function buildEnsembleAsset(): GeneratedAsset {
 
   const melody = [60, 62, 64, 65, 67, 69, 71, 72, 71, 69, 67, 65, 64, 62, 60];
   const t1 = midi.addTrack();
-  t1.name = '声部一 · 主旋律';
+  t1.name = 'Voice 1 Melody';
   melody.forEach((pitch, i) => t1.addNote({ midi: pitch, time: i * beat, duration: beat * 0.95, velocity: 0.8 }));
 
   const t2 = midi.addTrack();
-  t2.name = '声部二 · 部分和声';
+  t2.name = 'Voice 2 Harmony';
   melody.forEach((pitch, i) => {
     const harmonized = i >= 5 && i <= 9 ? pitch + 4 : pitch;
     t2.addNote({ midi: harmonized, time: i * beat, duration: beat * 0.95, velocity: 0.7 });
   });
 
   const t3 = midi.addTrack();
-  t3.name = '声部三 · 低八度加倍';
+  t3.name = 'Voice 3 Octave Down';
   melody.slice(0, 8).forEach((pitch, i) => t3.addNote({ midi: pitch - 12, time: i * beat, duration: beat * 0.95, velocity: 0.6 }));
 
   return { fileName: 'ensemble-multitrack.mid', description: '三条音轨的多轨齐奏样例，部分时刻同音、部分时刻分叉，用于验证多轨合并时的 merged 统计', bytes: midi.toArray() };
@@ -147,7 +148,7 @@ export function buildDrumAsset(): GeneratedAsset {
   const midi = new Midi();
   midi.header.setTempo(bpm);
   const track = midi.addTrack();
-  track.name = '鼓点测试';
+  track.name = 'Drum Pattern';
   track.channel = 9;
 
   for (let bar = 0; bar < 8; bar += 1) {
