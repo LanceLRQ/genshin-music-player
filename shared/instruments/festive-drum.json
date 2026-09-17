@@ -1,0 +1,33 @@
+{
+  "schemaVersion": 1,
+  "id": "festive-drum",
+  "name": "节庆鼓",
+  "kind": "percussion",
+  "status": "unverified",
+  "rows": [
+    {
+      "label": "鼓",
+      "keys": [
+        { "voice": "don", "code": "KeyF" },
+        { "voice": "ka", "code": "KeyJ" }
+      ]
+    }
+  ],
+  "timing": { "holdMs": 30, "minRepeatGapMs": 40, "sustain": false },
+  "percussionMap": {
+    "drumNotes": {
+      "35": "don",
+      "36": "don",
+      "37": "ka",
+      "38": "ka",
+      "40": "ka",
+      "42": "ka",
+      "44": "ka",
+      "46": "ka",
+      "49": "ka",
+      "51": "ka",
+      "57": "ka"
+    },
+    "splitPitch": "auto"
+  }
+}

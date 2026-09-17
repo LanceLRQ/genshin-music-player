@@ -1,0 +1,51 @@
+import festiveDrum from '../../../shared/instruments/festive-drum.json';
+import floralZither from '../../../shared/instruments/floral-zither.json';
+import twoRowPrototype from '../../../shared/instruments/two-row-prototype.json';
+import vintageLyre from '../../../shared/instruments/vintage-lyre.json';
+import windsongLyre from '../../../shared/instruments/windsong-lyre.json';
+import { InstrumentProfileSchema, type InstrumentProfile } from '../model/instrument';
+
+/** 模块加载时即做 schema 校验：内置配置写错会直接抛错，由测试兜底 */
+export const BUILTIN_INSTRUMENTS: readonly InstrumentProfile[] = [
+  windsongLyre,
+  floralZither,
+  vintageLyre,
+  twoRowPrototype,
+  festiveDrum,
+].map((raw) => InstrumentProfileSchema.parse(raw));
+
+export interface InstrumentEntry {
+  profile: InstrumentProfile;
+  builtin: boolean;
+}
+
+export function isBuiltinInstrumentId(id: string): boolean {
+  return BUILTIN_INSTRUMENTS.some((profile) => profile.id === id);
+}
+
+/** 内置乐器在前，自定义乐器按传入顺序追加；id 冲突的自定义乐器被跳过并给出警告 */
+export function mergeInstruments(custom: readonly InstrumentProfile[]): {
+  entries: InstrumentEntry[];
+  warnings: string[];
+} {
+  const entries: InstrumentEntry[] = BUILTIN_INSTRUMENTS.map((profile) => ({ profile, builtin: true }));
+  const warnings: string[] = [];
+  const seen = new Set(entries.map((entry) => entry.profile.id));
+  for (const profile of custom) {
+    if (seen.has(profile.id)) {
+      warnings.push(
+        isBuiltinInstrumentId(profile.id)
+          ? `自定义乐器「${profile.name}」的 id「${profile.id}」与内置乐器重复，已跳过`
+          : `自定义乐器 id「${profile.id}」重复，已跳过「${profile.name}」`,
+      );
+      continue;
+    }
+    seen.add(profile.id);
+    entries.push({ profile, builtin: false });
+  }
+  return { entries, warnings };
+}
+
+export function findInstrument(entries: readonly InstrumentEntry[], id: string): InstrumentProfile | undefined {
+  return entries.find((entry) => entry.profile.id === id)?.profile;
+}

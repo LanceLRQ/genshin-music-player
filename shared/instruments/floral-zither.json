@@ -1,0 +1,46 @@
+{
+  "schemaVersion": 1,
+  "id": "floral-zither",
+  "name": "镜花之琴",
+  "kind": "pitched",
+  "status": "verified",
+  "rows": [
+    {
+      "label": "高音",
+      "keys": [
+        { "pitch": 72, "code": "KeyQ" },
+        { "pitch": 74, "code": "KeyW" },
+        { "pitch": 76, "code": "KeyE" },
+        { "pitch": 77, "code": "KeyR" },
+        { "pitch": 79, "code": "KeyT" },
+        { "pitch": 81, "code": "KeyY" },
+        { "pitch": 83, "code": "KeyU" }
+      ]
+    },
+    {
+      "label": "中音",
+      "keys": [
+        { "pitch": 60, "code": "KeyA" },
+        { "pitch": 62, "code": "KeyS" },
+        { "pitch": 64, "code": "KeyD" },
+        { "pitch": 65, "code": "KeyF" },
+        { "pitch": 67, "code": "KeyG" },
+        { "pitch": 69, "code": "KeyH" },
+        { "pitch": 71, "code": "KeyJ" }
+      ]
+    },
+    {
+      "label": "低音",
+      "keys": [
+        { "pitch": 48, "code": "KeyZ" },
+        { "pitch": 50, "code": "KeyX" },
+        { "pitch": 52, "code": "KeyC" },
+        { "pitch": 53, "code": "KeyV" },
+        { "pitch": 55, "code": "KeyB" },
+        { "pitch": 57, "code": "KeyN" },
+        { "pitch": 59, "code": "KeyM" }
+      ]
+    }
+  ],
+  "timing": { "holdMs": 30, "minRepeatGapMs": 40, "sustain": false }
+}
