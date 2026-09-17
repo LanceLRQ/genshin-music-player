@@ -38,7 +38,7 @@ function drumProfile() {
       },
     ],
     timing: { holdMs: 30, minRepeatGapMs: 40 },
-    percussionMap: { drumNotes: { '36': 'don', '38': 'ka' }, splitPitch: 'auto' },
+    percussionMap: { drumNotes: { '36': 'don', '38': 'ka' } as Record<string, string>, splitPitch: 'auto' },
   };
 }
 
@@ -120,5 +120,36 @@ describe('validateInstrumentProfile', () => {
     const profile = pitchedProfile();
     profile.rows[0].keys = 'ABCDEFGHIJKLM'.split('').map((letter, i) => ({ pitch: 60 + i, code: `Key${letter}` }));
     expect(errorsOf(profile).some((e) => e.startsWith('rows.0.keys：'))).toBe(true);
+  });
+
+  it('结构性错误返回中文文案', () => {
+    const errors = errorsOf({});
+    expect(errors).toContain('schemaVersion：乐器配置版本必须是 1');
+    expect(errors).toContain('id：ID 必须是文本');
+    expect(errors).toContain('name：名称必须是文本');
+    expect(errors).toContain('kind：类型必须是 pitched（音高类）或 percussion（敲击类）');
+    expect(errors).toContain('status：状态必须是 verified（已验证）或 unverified（待实测）');
+    expect(errors).toContain('rows：行配置必须是数组');
+    expect(errors).toContain('timing：时值配置必须是对象');
+  });
+
+  it('非对象输入报中文错误', () => {
+    expect(errorsOf('nope')).toEqual(['(根)：乐器配置必须是 JSON 对象']);
+  });
+
+  it('drumNotes 非规范键规范化为十进制', () => {
+    const profile = drumProfile();
+    profile.percussionMap.drumNotes = { '036': 'don', '38': 'ka' };
+    const result = validateInstrumentProfile(profile);
+    expect(result.ok).toBe(true);
+    if (result.ok) expect(result.value.percussionMap?.drumNotes).toEqual({ '36': 'don', '38': 'ka' });
+  });
+
+  it('规范化后重复的键后出现的覆盖先出现的', () => {
+    const profile = drumProfile();
+    profile.percussionMap.drumNotes = { '36': 'don', '036': 'ka' };
+    const result = validateInstrumentProfile(profile);
+    expect(result.ok).toBe(true);
+    if (result.ok) expect(result.value.percussionMap?.drumNotes).toEqual({ '36': 'ka' });
   });
 });

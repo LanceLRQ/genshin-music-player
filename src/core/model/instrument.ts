@@ -3,39 +3,95 @@ import { isKnownKeyCode } from './keycodes';
 
 export const INSTRUMENT_FILE_VERSION = 1;
 
-export const InstrumentKeySchema = z.object({
-  code: z.string().min(1),
-  pitch: z.number().int().min(0).max(127).optional(),
-  voice: z.string().min(1).optional(),
-});
+export const InstrumentKeySchema = z.object(
+  {
+    code: z.string({ message: '键码必须是文本' }).min(1, '键码不能为空'),
+    pitch: z
+      .number({ message: '音高必须是数字' })
+      .int('音高必须是整数')
+      .min(0, '音高不能小于 0')
+      .max(127, '音高不能大于 127')
+      .optional(),
+    voice: z.string({ message: '音色必须是文本' }).min(1, '音色不能为空').optional(),
+  },
+  { message: '键位配置必须是对象' },
+);
 
-export const InstrumentRowSchema = z.object({
-  label: z.string(),
-  keys: z.array(InstrumentKeySchema).min(1).max(12),
-});
+export const InstrumentRowSchema = z.object(
+  {
+    label: z.string({ message: '行名必须是文本' }),
+    keys: z
+      .array(InstrumentKeySchema, { message: '键位必须是数组' })
+      .min(1, '每行至少需要 1 个键')
+      .max(12, '每行最多 12 个键'),
+  },
+  { message: '行配置必须是对象' },
+);
 
-export const InstrumentTimingSchema = z.object({
-  holdMs: z.number().int().min(1).max(1000),
-  minRepeatGapMs: z.number().int().min(0).max(1000),
-  sustain: z.boolean().default(false),
-});
+export const InstrumentTimingSchema = z.object(
+  {
+    holdMs: z
+      .number({ message: '按住时长必须是数字' })
+      .int('按住时长必须是整数')
+      .min(1, '按住时长必须至少 1ms')
+      .max(1000, '按住时长不能超过 1000ms'),
+    minRepeatGapMs: z
+      .number({ message: '最小重复间隔必须是数字' })
+      .int('最小重复间隔必须是整数')
+      .min(0, '最小重复间隔不能小于 0')
+      .max(1000, '最小重复间隔不能超过 1000ms'),
+    sustain: z.boolean({ message: '可持续发声必须是布尔值' }).default(false),
+  },
+  { message: '时值配置必须是对象' },
+);
 
-export const PercussionMapSchema = z.object({
-  drumNotes: z.record(z.string().regex(/^\d{1,3}$/), z.string().min(1)),
-  splitPitch: z.union([z.literal('auto'), z.number().int().min(0).max(127)]),
-});
+/** 规范化鼓映射键：'036' → '36'，与演奏适配时的 String(pitch) 查找保持一致；规范化后重复时后出现的覆盖先出现的 */
+function canonicalizeDrumNotes(notes: Record<string, string>): Record<string, string> {
+  const canonical: Record<string, string> = {};
+  for (const [note, voice] of Object.entries(notes)) canonical[String(Number(note))] = voice;
+  return canonical;
+}
+
+export const PercussionMapSchema = z.object(
+  {
+    drumNotes: z
+      .record(
+        z.string().regex(/^\d{1,3}$/, 'MIDI 音符号必须是 1–3 位数字'),
+        z.string({ message: '音色必须是文本' }).min(1, '音色不能为空'),
+      )
+      .transform(canonicalizeDrumNotes),
+    splitPitch: z.union(
+      [
+        z.literal('auto'),
+        z
+          .number({ message: '分界音高必须是数字' })
+          .int('分界音高必须是整数')
+          .min(0, '分界音高不能小于 0')
+          .max(127, '分界音高不能大于 127'),
+      ],
+      { message: '分界音高必须是 auto 或 0–127 的整数' },
+    ),
+  },
+  { message: '鼓映射表配置必须是对象' },
+);
 
 export const InstrumentProfileSchema = z
-  .object({
-    schemaVersion: z.literal(INSTRUMENT_FILE_VERSION),
-    id: z.string().regex(/^[a-z0-9]+(-[a-z0-9]+)*$/, 'id 只能包含小写字母、数字和连字符'),
-    name: z.string().min(1),
-    kind: z.enum(['pitched', 'percussion']),
-    status: z.enum(['verified', 'unverified']),
-    rows: z.array(InstrumentRowSchema).min(1).max(4),
-    timing: InstrumentTimingSchema,
-    percussionMap: PercussionMapSchema.optional(),
-  })
+  .object(
+    {
+      schemaVersion: z.literal(INSTRUMENT_FILE_VERSION, { message: `乐器配置版本必须是 ${INSTRUMENT_FILE_VERSION}` }),
+      id: z.string({ message: 'ID 必须是文本' }).regex(/^[a-z0-9]+(-[a-z0-9]+)*$/, 'id 只能包含小写字母、数字和连字符'),
+      name: z.string({ message: '名称必须是文本' }).min(1, '名称不能为空'),
+      kind: z.enum(['pitched', 'percussion'], { message: '类型必须是 pitched（音高类）或 percussion（敲击类）' }),
+      status: z.enum(['verified', 'unverified'], { message: '状态必须是 verified（已验证）或 unverified（待实测）' }),
+      rows: z
+        .array(InstrumentRowSchema, { message: '行配置必须是数组' })
+        .min(1, '至少需要 1 行')
+        .max(4, '最多 4 行'),
+      timing: InstrumentTimingSchema,
+      percussionMap: PercussionMapSchema.optional(),
+    },
+    { message: '乐器配置必须是 JSON 对象' },
+  )
   .superRefine((profile, ctx) => {
     const codes = new Set<string>();
     const pitches = new Set<number>();
@@ -76,7 +132,7 @@ export type InstrumentProfile = z.infer<typeof InstrumentProfileSchema>;
 
 export type ValidationResult<T> = { ok: true; value: T } | { ok: false; errors: string[] };
 
-/** 校验乐器配置；错误格式为「字段路径：说明」 */
+/** 校验乐器配置；错误格式为「字段路径：说明」（schema 层与业务层都已是中文） */
 export function validateInstrumentProfile(data: unknown): ValidationResult<InstrumentProfile> {
   const result = InstrumentProfileSchema.safeParse(data);
   if (result.success) return { ok: true, value: result.data };
