@@ -27,17 +27,23 @@ export function usePlayerEvents(): void {
     ];
 
     const start = async () => {
-      for (const subscribe of subscriptions) {
-        const unlisten = await subscribe();
-        if (disposed) {
-          unlisten();
-          return;
+      try {
+        for (const subscribe of subscriptions) {
+          const unlisten = await subscribe();
+          if (disposed) {
+            unlisten();
+            return;
+          }
+          unlisteners.push(unlisten);
         }
-        unlisteners.push(unlisten);
+        const state = await getPlayerState();
+        if (disposed || receivedStateEvent) return;
+        setPlayerState(state);
+      } catch (error) {
+        // 订阅中途失败时，取消已经建立的订阅，不能让它们存活到卸载
+        for (const unlisten of unlisteners.splice(0)) unlisten();
+        throw error;
       }
-      const state = await getPlayerState();
-      if (disposed || receivedStateEvent) return;
-      setPlayerState(state);
     };
 
     start().catch((error: unknown) => {

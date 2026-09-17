@@ -112,4 +112,23 @@ describe('usePlayerEvents', () => {
     renderHook(() => usePlayerEvents());
     await waitFor(() => expect(spy).toHaveBeenCalledWith('无法同步播放器状态：读写文件失败'));
   });
+
+  it('订阅中途失败时，取消已经建立的订阅并提示错误', async () => {
+    // mock 取消订阅后仍可能尝试回调并打印警告，这里屏蔽掉
+    vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+    const calls: { cmd: string; event?: string }[] = [];
+    mockIPC((cmd, args) => {
+      const event = (args as { event?: string } | undefined)?.event;
+      calls.push({ cmd, event });
+      if (cmd === 'plugin:event|listen' && event === 'player://progress') {
+        return Promise.reject(new Error('boom'));
+      }
+      return cmd === 'get_player_state' ? { kind: 'idle' } : 1;
+    });
+    const spy = vi.spyOn(toast, 'error');
+    renderHook(() => usePlayerEvents());
+    await waitFor(() => expect(spy).toHaveBeenCalledWith('无法同步播放器状态：boom'));
+    expect(calls.some((call) => call.cmd === 'plugin:event|unlisten' && call.event === 'player://state')).toBe(true);
+    expect(calls.some((call) => call.cmd === 'plugin:event|unlisten' && call.event === 'player://summary')).toBe(false);
+  });
 });
