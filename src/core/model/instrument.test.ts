@@ -1,0 +1,124 @@
+import { describe, expect, it } from 'vitest';
+import { validateInstrumentProfile } from './instrument';
+
+function pitchedProfile() {
+  return {
+    schemaVersion: 1,
+    id: 'test-lyre',
+    name: '测试琴',
+    kind: 'pitched',
+    status: 'unverified',
+    rows: [
+      {
+        label: '中音',
+        keys: [
+          { pitch: 60, code: 'KeyA' },
+          { pitch: 62, code: 'KeyS' },
+        ],
+      },
+    ],
+    timing: { holdMs: 30, minRepeatGapMs: 40 },
+  };
+}
+
+function drumProfile() {
+  return {
+    schemaVersion: 1,
+    id: 'test-drum',
+    name: '测试鼓',
+    kind: 'percussion',
+    status: 'unverified',
+    rows: [
+      {
+        label: '鼓',
+        keys: [
+          { voice: 'don', code: 'KeyF' },
+          { voice: 'ka', code: 'KeyJ' },
+        ],
+      },
+    ],
+    timing: { holdMs: 30, minRepeatGapMs: 40 },
+    percussionMap: { drumNotes: { '36': 'don', '38': 'ka' }, splitPitch: 'auto' },
+  };
+}
+
+function errorsOf(data: unknown): string[] {
+  const result = validateInstrumentProfile(data);
+  return result.ok ? [] : result.errors;
+}
+
+describe('validateInstrumentProfile', () => {
+  it('合法的音高类配置通过，sustain 默认为 false', () => {
+    const result = validateInstrumentProfile(pitchedProfile());
+    expect(result.ok).toBe(true);
+    if (result.ok) expect(result.value.timing.sustain).toBe(false);
+  });
+
+  it('合法的敲击类配置通过', () => {
+    expect(errorsOf(drumProfile())).toEqual([]);
+  });
+
+  it('id 必须是小写 kebab-case', () => {
+    expect(errorsOf({ ...pitchedProfile(), id: 'Test Lyre' })[0]).toMatch(/^id：/);
+  });
+
+  it('键码重复时报错', () => {
+    const profile = pitchedProfile();
+    profile.rows[0].keys[1].code = 'KeyA';
+    expect(errorsOf(profile)).toContain('rows.0.keys.1.code：键码「KeyA」重复');
+  });
+
+  it('未知键码报错', () => {
+    const profile = pitchedProfile();
+    profile.rows[0].keys[0].code = 'KeyFoo';
+    expect(errorsOf(profile)).toContain('rows.0.keys.0.code：未知键码「KeyFoo」');
+  });
+
+  it('音高类乐器的键缺少 pitch 时报错', () => {
+    const profile = pitchedProfile();
+    delete (profile.rows[0].keys[1] as { pitch?: number }).pitch;
+    expect(errorsOf(profile)).toContain('rows.0.keys.1.pitch：音高类乐器的键必须有 pitch');
+  });
+
+  it('音高重复时报错', () => {
+    const profile = pitchedProfile();
+    profile.rows[0].keys[1].pitch = 60;
+    expect(errorsOf(profile)).toContain('rows.0.keys.1.pitch：音高 60 重复');
+  });
+
+  it('音高类乐器的键不能有 voice', () => {
+    const profile = pitchedProfile();
+    (profile.rows[0].keys[0] as { voice?: string }).voice = 'don';
+    expect(errorsOf(profile)).toContain('rows.0.keys.0.voice：音高类乐器的键不能有 voice');
+  });
+
+  it('敲击类乐器的键缺少 voice 时报错', () => {
+    const profile = drumProfile();
+    delete (profile.rows[0].keys[0] as { voice?: string }).voice;
+    expect(errorsOf(profile)).toContain('rows.0.keys.0.voice：敲击类乐器的键必须有 voice');
+  });
+
+  it('敲击类乐器的键不能有 pitch', () => {
+    const profile = drumProfile();
+    (profile.rows[0].keys[0] as { pitch?: number }).pitch = 36;
+    expect(errorsOf(profile)).toContain('rows.0.keys.0.pitch：敲击类乐器的键不能有 pitch');
+  });
+
+  it('音色重复时报错', () => {
+    const profile = drumProfile();
+    profile.rows[0].keys[1].voice = 'don';
+    expect(errorsOf(profile)).toContain('rows.0.keys.1.voice：音色「don」重复');
+  });
+
+  it('鼓映射引用不存在的音色时报错', () => {
+    const profile = drumProfile();
+    profile.percussionMap.drumNotes = { '36': 'boom', '38': 'ka' };
+    expect(errorsOf(profile)).toContain('percussionMap.drumNotes.36：音色「boom」在键位中不存在');
+  });
+
+  it('每行最多 12 个键', () => {
+    const profile = pitchedProfile();
+    profile.rows[0].keys = 'ABCDEFGHIJKLM'.split('').map((letter, i) => ({ pitch: 60 + i, code: `Key${letter}` }));
+    expect(errorsOf(profile).some((e) => e.startsWith('rows.0.keys：'))).toBe(true);
+  });
+});
