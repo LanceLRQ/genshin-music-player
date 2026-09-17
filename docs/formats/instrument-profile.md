@@ -1,0 +1,205 @@
+# 乐器配置格式
+
+乐器配置是一份 JSON 文件，描述一件乐器有哪些按键、每个键对应的音高（或音色）、以及按键的时序参数。软件内置几件乐器，也可以在"乐器"页新建、编辑、导入或导出自定义配置。自定义配置保存在应用数据目录的 `instruments/<id>.json` 里。
+
+## 顶层字段
+
+| 字段 | 类型 | 说明 |
+|---|---|---|
+| `schemaVersion` | `1` | 固定为 `1` |
+| `id` | 字符串 | kebab-case（小写字母、数字、连字符），全局唯一；自定义乐器的 `id` 不能和内置乐器重复 |
+| `name` | 字符串 | 显示名称 |
+| `kind` | `"pitched"` \| `"percussion"` | 音高类还是敲击类 |
+| `status` | `"verified"` \| `"unverified"` | 是否已经在游戏里实测确认过 |
+| `rows` | 数组，1–4 项 | 见下文"行与键" |
+| `timing` | 对象 | 见下文"时序参数" |
+| `percussionMap` | 对象，可选 | 仅敲击类乐器需要，见下文"敲击映射" |
+
+## 行与键
+
+`rows` 是一个数组，每一项代表界面上的一行按键：
+
+```jsonc
+{
+  "label": "高音",
+  "keys": [
+    { "pitch": 72, "code": "KeyQ" }
+  ]
+}
+```
+
+- `label`：这一行的名称，任意字符串（比如"高音""中音""鼓"）。
+- `keys`：这一行的按键，1–12 个。每个键是：
+  - `code`：物理键码，必须是 [`shared/keycodes.json`](../../shared/keycodes.json) 里存在的键（比如 `KeyQ`、`Digit1`、`Space`）；
+  - 音高类乐器（`kind = "pitched"`）：每个键必须有 `pitch`（MIDI 音高号，0–127，60 = C4），不能有 `voice`；
+  - 敲击类乐器（`kind = "percussion"`）：每个键必须有 `voice`（音色名，比如 `don`、`ka`），不能有 `pitch`。
+
+## 时序参数
+
+```jsonc
+{ "holdMs": 30, "minRepeatGapMs": 40, "sustain": false }
+```
+
+| 字段 | 说明 | 范围 |
+|---|---|---|
+| `holdMs` | 每次按键的按住时长（毫秒） | 1–1000 |
+| `minRepeatGapMs` | 同一个键连续按下的最小间隔（毫秒），短于这个间隔的后一次按键会被丢弃 | 0–1000 |
+| `sustain` | 是否可以持续发声；`true` 时按住时长取音符时值和 `holdMs` 中较大的一个 | 默认 `false` |
+
+这三个值都需要在游戏里实测校准，见下文"实测校准"。
+
+## 敲击映射
+
+只有 `kind = "percussion"` 时才需要：
+
+```jsonc
+{
+  "drumNotes": { "36": "don", "38": "ka" },
+  "splitPitch": "auto"
+}
+```
+
+- `drumNotes`：MIDI 鼓音符号（字符串形式的数字）到音色的映射，用于把鼓轨（MIDI 第 10 通道）的音符转换成按键；表里引用的音色必须在 `rows` 的某个键上存在。
+- `splitPitch`：非鼓轨音符按音高分界映射成音色的分界线；写 `"auto"` 表示取所选音轨全部音高的中位数，也可以写一个具体的 MIDI 音高号。
+
+## 校验规则
+
+保存或导入配置时会做以下校验，任何一条不满足都会报错并指出具体字段：
+
+- 同一个乐器内 `code` 不能重复，且必须是 [`shared/keycodes.json`](../../shared/keycodes.json) 里存在的键。
+- 音高类乐器：每个键必须有 `pitch`、不能有 `voice`；同一个乐器内 `pitch` 不能重复。
+- 敲击类乐器：每个键必须有 `voice`、不能有 `pitch`；同一个乐器内 `voice` 不能重复；`percussionMap.drumNotes` 里引用的音色必须在某个键上存在。
+- `id` 必须是小写 kebab-case（正则 `^[a-z0-9]+(-[a-z0-9]+)*$`）。
+- `rows` 是 1–4 项，每行 `keys` 是 1–12 项。
+
+## 完整示例：音高类乐器
+
+一件两行乐器的最小示例（真实的内置乐器有更多按键，见下文"内置乐器"）：
+
+```json
+{
+  "schemaVersion": 1,
+  "id": "my-two-row-lyre",
+  "name": "我的两行诗琴",
+  "kind": "pitched",
+  "status": "unverified",
+  "rows": [
+    {
+      "label": "高音",
+      "keys": [
+        { "pitch": 72, "code": "KeyQ" },
+        { "pitch": 74, "code": "KeyW" },
+        { "pitch": 76, "code": "KeyE" }
+      ]
+    },
+    {
+      "label": "中音",
+      "keys": [
+        { "pitch": 60, "code": "KeyA" },
+        { "pitch": 62, "code": "KeyS" },
+        { "pitch": 64, "code": "KeyD" }
+      ]
+    }
+  ],
+  "timing": { "holdMs": 30, "minRepeatGapMs": 40, "sustain": false }
+}
+```
+
+## 完整示例：敲击类乐器
+
+```json
+{
+  "schemaVersion": 1,
+  "id": "my-hand-drum",
+  "name": "我的手鼓",
+  "kind": "percussion",
+  "status": "unverified",
+  "rows": [
+    {
+      "label": "鼓",
+      "keys": [
+        { "voice": "don", "code": "KeyF" },
+        { "voice": "ka", "code": "KeyJ" }
+      ]
+    }
+  ],
+  "timing": { "holdMs": 30, "minRepeatGapMs": 40, "sustain": false },
+  "percussionMap": {
+    "drumNotes": { "36": "don", "38": "ka" },
+    "splitPitch": "auto"
+  }
+}
+```
+
+## 常见错误示例
+
+同一个乐器内音高重复：
+
+<!-- 预期错误: 音高 60 重复 -->
+```json-error
+{
+  "schemaVersion": 1,
+  "id": "broken-lyre",
+  "name": "坏配置示例",
+  "kind": "pitched",
+  "status": "unverified",
+  "rows": [
+    {
+      "label": "行",
+      "keys": [
+        { "pitch": 60, "code": "KeyA" },
+        { "pitch": 60, "code": "KeyS" }
+      ]
+    }
+  ],
+  "timing": { "holdMs": 30, "minRepeatGapMs": 40 }
+}
+```
+
+## 内置乐器
+
+| id | 名称 | 类型 | 状态 | 键位与音高 |
+|---|---|---|---|---|
+| `windsong-lyre` | 风物之诗琴 | 音高类 | 已验证 | 高音 `Q W E R T Y U` = 72 74 76 77 79 81 83；中音 `A S D F G H J` = 60 62 64 65 67 69 71；低音 `Z X C V B N M` = 48 50 52 53 55 57 59 |
+| `floral-zither` | 镜花之琴 | 音高类 | 已验证 | 键位与风物之诗琴相同 |
+| `vintage-lyre` | 老旧的诗琴 | 音高类 | 待实测 | 键位与风物之诗琴相同，音高按社区资料暂定，等待游戏内实测确认 |
+| `two-row-prototype` | 两行乐器（开发中） | 音高类 | 待实测 | 高音谱号行 `Q W E R T Y U`、低音谱号行 `A S D F G N J`，暂定音域，正式名称和键位需要上线后实测 |
+| `festive-drum` | 节庆鼓 | 敲击类 | 待实测 | 暂定咚 = `KeyF`、咔 = `KeyJ`，默认键位需要游戏内确认 |
+
+标记"待实测"的乐器可以正常使用，只是键位或音高可能与游戏实际不符；用户可以自己编辑校准，不需要等待软件更新。所有内置乐器的 `timing` 初始值都是 `holdMs = 30`、`minRepeatGapMs = 40`，同样需要按下文的方法在游戏里校准。
+
+## 实测校准
+
+配置里的三类数值都需要在实际游戏环境中确认。下面的命令用到验证工具 `gm-verify`：软件本身不分发这个工具，需要按 [README](../../README.md) 的"从源码构建"准备好 Node.js、pnpm、Rust 环境后，在仓库根目录用 `cargo run -p gm-verify --release --` 加子命令来运行；Windows 上要在**以管理员身份打开的终端**里执行，否则按键可能被系统拦截而看不出问题。
+
+### 按住时长与最小重复间隔
+
+`repeat` 测试样例会用固定的九档间隔（200 / 150 / 100 / 80 / 60 / 50 / 40 / 30 / 20ms，每档连打 5 次）连续按同一个键；`--gap` 传给的是生成执行时间线时使用的 `minRepeatGapMs`——间隔小于这个值的按键会在发送前就被直接丢弃，不会真的发到游戏里。所以**不要**用调低 `--gap` 的方式去试探每一档，而是先把 `--gap` 设成 `0`，让九档全部真实发送：
+
+```bash
+cargo run -p gm-verify --release -- pattern repeat --instrument windsong-lyre --gap 0
+```
+
+对着游戏数每一档实际听到几次响声，找到"5 次都响"的最短那一档对应的间隔，加上一点余量后写回配置的 `timing.minRepeatGapMs`。建议在游戏帧率上限调到 60 和 30 时各测一次，取两者中更保守（更大）的值。
+
+按住时长用 `scale` 样例配合 `--hold` 测试，从当前值往下试：
+
+```bash
+cargo run -p gm-verify --release -- pattern scale --instrument windsong-lyre --hold 15
+```
+
+依次尝试 30 → 20 → 15 → 10 → 5，找到每个键仍然都能正常发声的最小值，同样在 60 帧和 30 帧下各测一次，取更保守的值写回 `timing.holdMs`。
+
+### 音高
+
+对每个键逐个测试：
+
+```bash
+cargo run -p gm-verify --release -- pattern scale --instrument windsong-lyre
+```
+
+这会按行、按键顺序逐个弹奏。对着游戏录音，再用调音器或 `docs/guides/audio-to-midi.md` 里介绍的音频转 MIDI 工具（比如 Basic Pitch）识别出实际音高，和配置里的 `pitch` 对照，不一致就改成实测值。全部键确认无误后，把配置的 `status` 改成 `"verified"`。
+
+### 敲击类乐器的音色
+
+用调音器分辨不同鼓面敲击出的音色差异比较困难，更适合直接凭听感和节奏位置判断"咚"和"咔"对应哪个键，再用 `cargo run -p gm-verify --release -- pattern chord --instrument <id>` 或 `cargo run -p gm-verify --release -- pattern scale --instrument <id>` 逐键确认。
