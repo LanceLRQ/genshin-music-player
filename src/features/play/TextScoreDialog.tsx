@@ -16,10 +16,8 @@ import { parseKeyscore } from '@/core/parsers/keyscore';
 import { useDebouncedValue } from '@/hooks/useDebouncedValue';
 import { formatTime } from '@/lib/format';
 import { useInstrumentStore } from '@/stores/instrumentStore';
+import type { TextScoreTab } from './ImportMenu';
 import { scoreDurationMs } from './scoreInfo';
-
-/** 文本乐谱对话框的标签页：键盘谱或简谱 */
-type TextScoreTab = 'keyscore' | 'jianpu';
 
 export interface TextScorePreset {
   title?: string;
