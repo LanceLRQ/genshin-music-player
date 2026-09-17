@@ -4,13 +4,20 @@ import type { Score } from '@/core/model/score';
 import { ScoreParseError } from '@/core/parsers/errors';
 import { parseJsonScore, serializeScore } from '@/core/parsers/jsonScore';
 import { parseMidi } from '@/core/parsers/midi';
+import { hasTauriRuntime, IPC_UNAVAILABLE_MESSAGE } from '@/ipc/commands';
 import { guessTextFormat, type TextFormat } from './scoreInfo';
 
 /** 文件选择对话框的过滤器（设计 01 第 4.2 节） */
 export const SCORE_FILE_FILTERS = [{ name: '乐谱文件', extensions: ['mid', 'midi', 'txt', 'json'] }];
 
+/** 文件对话框依赖 Tauri IPC；纯浏览器中提前给出可读提示，而非插件内部的 TypeError */
+function ensureFileDialogRuntime(): void {
+  if (!hasTauriRuntime()) throw new Error(IPC_UNAVAILABLE_MESSAGE);
+}
+
 /** 打开「选择乐谱文件」对话框；取消时返回 null */
 export async function pickScoreFile(): Promise<string | null> {
+  ensureFileDialogRuntime();
   const path = await open({ multiple: false, title: '打开乐谱', filters: SCORE_FILE_FILTERS });
   return typeof path === 'string' ? path : null;
 }
@@ -21,6 +28,7 @@ export function readScoreFile(path: string): Promise<Uint8Array> {
 
 /** 保存 JSON 谱，默认文件名 `<标题>.json`；取消时返回 false */
 export async function writeScoreJson(title: string, score: Score): Promise<boolean> {
+  ensureFileDialogRuntime();
   const path = await save({
     title: '导出 JSON 谱',
     defaultPath: `${title}.json`,

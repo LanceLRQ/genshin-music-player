@@ -8,10 +8,15 @@ const mocks = vi.hoisted(() => ({
   save: vi.fn(),
   readFile: vi.fn(),
   writeTextFile: vi.fn(),
+  hasTauriRuntime: vi.fn(),
 }));
 
 vi.mock('@tauri-apps/plugin-dialog', () => ({ open: mocks.open, save: mocks.save }));
 vi.mock('@tauri-apps/plugin-fs', () => ({ readFile: mocks.readFile, writeTextFile: mocks.writeTextFile }));
+vi.mock('@/ipc/commands', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/ipc/commands')>();
+  return { ...actual, hasTauriRuntime: mocks.hasTauriRuntime };
+});
 
 function buildMidi(): Uint8Array {
   const midi = new Midi();
@@ -30,6 +35,7 @@ const jsonScore = JSON.stringify({
 
 beforeEach(() => {
   vi.clearAllMocks();
+  mocks.hasTauriRuntime.mockReturnValue(true);
 });
 
 describe('pickScoreFile / writeScoreJson', () => {
@@ -56,6 +62,19 @@ describe('pickScoreFile / writeScoreJson', () => {
     const score = { meta: { title: '测试曲', source: 'json' as const }, tracks: [] };
     await expect(writeScoreJson('测试曲', score)).resolves.toBe(false);
     expect(mocks.writeTextFile).not.toHaveBeenCalled();
+  });
+
+  it('无 Tauri 运行时时 pickScoreFile 拒绝并提示未连接桌面端', async () => {
+    mocks.open.mockRejectedValue(new TypeError("Cannot read properties of undefined (reading 'invoke')"));
+    mocks.hasTauriRuntime.mockReturnValueOnce(false);
+    await expect(pickScoreFile()).rejects.toThrow(/未连接到桌面端后端/);
+  });
+
+  it('无 Tauri 运行时时 writeScoreJson 拒绝并提示未连接桌面端', async () => {
+    mocks.save.mockRejectedValue(new TypeError("Cannot read properties of undefined (reading 'invoke')"));
+    mocks.hasTauriRuntime.mockReturnValueOnce(false);
+    const score = { meta: { title: 't', source: 'json' as const }, tracks: [] };
+    await expect(writeScoreJson('t', score)).rejects.toThrow(/未连接到桌面端后端/);
   });
 });
 
