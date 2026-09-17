@@ -4,5 +4,6 @@ pub mod error;
 pub mod instruments;
 pub mod keymap;
 pub mod model;
+pub mod timeline;
 
 pub use error::{CoreError, ErrorCode};
