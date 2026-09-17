@@ -1,3 +1,5 @@
+import { open, save } from '@tauri-apps/plugin-dialog';
+import { readTextFile, writeTextFile } from '@tauri-apps/plugin-fs';
 import { clearMocks, mockIPC } from '@tauri-apps/api/mocks';
 import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
@@ -13,6 +15,8 @@ import { InstrumentsPage } from './InstrumentsPage';
 vi.mock('@/audio/previewPlayer', () => ({
   previewPlayer: { playKey: vi.fn(), start: vi.fn(), stop: vi.fn() },
 }));
+vi.mock('@tauri-apps/plugin-dialog', () => ({ open: vi.fn(), save: vi.fn() }));
+vi.mock('@tauri-apps/plugin-fs', () => ({ readTextFile: vi.fn(), writeTextFile: vi.fn() }));
 
 const lyre = BUILTIN_INSTRUMENTS[0];
 const myLyre: InstrumentProfile = { ...structuredClone(lyre), id: 'my-lyre', name: '我的琴', status: 'unverified', timing: { holdMs: 35, minRepeatGapMs: 45, sustain: false } };
@@ -175,5 +179,84 @@ describe('InstrumentsPage 列表与详情', () => {
     // jest-dom 的 toHaveValue 不支持正则，改为直接读取输入值匹配
     expect(screen.getByLabelText<HTMLInputElement>('ID').value).toMatch(/^custom-\d+$/);
     expect(screen.getByLabelText('ID')).toBeEnabled();
+  });
+});
+
+describe('InstrumentsPage 导入与导出', () => {
+  it('导入合法配置后保存并选中新乐器', async () => {
+    vi.mocked(open).mockResolvedValue('/data/新琴.json');
+    vi.mocked(readTextFile).mockResolvedValue(JSON.stringify({ ...myLyre, id: 'new-lyre', name: '新琴' }));
+    const { user } = await renderPage();
+    await user.click(screen.getByRole('button', { name: '导入 JSON' }));
+    await waitFor(() => expect(useInstrumentStore.getState().selectedId).toBe('new-lyre'));
+    // 导入后自动选中新乐器，名称在列表项与详情标题各出现一次
+    expect(screen.getAllByText('新琴')).toHaveLength(2);
+  });
+
+  it('校验失败的文件用对话框列出全部错误', async () => {
+    vi.mocked(open).mockResolvedValue('/data/broken.json');
+    vi.mocked(readTextFile).mockResolvedValue(JSON.stringify({ schemaVersion: 1, id: 'BROKEN', name: '' }));
+    const { user } = await renderPage();
+    await user.click(screen.getByRole('button', { name: '导入 JSON' }));
+    expect(await screen.findByRole('dialog', { name: '乐器配置校验失败' })).toBeInTheDocument();
+    expect(screen.getByText(/id 只能包含小写字母、数字和连字符/)).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: '知道了' }));
+    expect(screen.queryByRole('dialog', { name: '乐器配置校验失败' })).not.toBeInTheDocument();
+  });
+
+  it('导入内置 ID 提示修改 ID', async () => {
+    const spy = vi.spyOn(toast, 'error');
+    vi.mocked(open).mockResolvedValue('/data/lyre.json');
+    vi.mocked(readTextFile).mockResolvedValue(JSON.stringify({ ...myLyre, id: 'windsong-lyre' }));
+    await renderPage();
+    await userEvent.setup().click(screen.getByRole('button', { name: '导入 JSON' }));
+    await waitFor(() =>
+      expect(spy).toHaveBeenCalledWith('这个 ID 属于内置乐器，请修改 ID 后再导入'),
+    );
+  });
+
+  it('导入同 ID 自定义乐器先确认覆盖', async () => {
+    customs = [{ ...myLyre }];
+    vi.mocked(open).mockResolvedValue('/data/my-lyre.json');
+    vi.mocked(readTextFile).mockResolvedValue(JSON.stringify({ ...myLyre, name: '我的琴改' }));
+    const { user } = await renderPage();
+    await user.click(screen.getByRole('button', { name: '导入 JSON' }));
+    expect(await screen.findByRole('alertdialog', { name: '覆盖已有乐器？' })).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: '覆盖' }));
+    // 覆盖后乐器被选中，名称在列表项与详情标题各出现一次
+    await waitFor(() => expect(screen.getAllByText('我的琴改')).toHaveLength(2));
+  });
+
+  it('导出当前乐器为格式化 JSON', async () => {
+    customs = [{ ...myLyre }];
+    vi.mocked(save).mockResolvedValue('/out/我的琴.json');
+    const { user } = await renderPage();
+    await user.click(screen.getByText('我的琴'));
+    await user.click(screen.getByRole('button', { name: '导出 JSON' }));
+    await waitFor(() => expect(writeTextFile).toHaveBeenCalled());
+    expect(writeTextFile).toHaveBeenCalledWith('/out/我的琴.json', JSON.stringify(myLyre, null, 2));
+  });
+
+  it('JSON 解析失败时提示原因', async () => {
+    const spy = vi.spyOn(toast, 'error');
+    vi.mocked(open).mockResolvedValue('/data/bad.json');
+    vi.mocked(readTextFile).mockResolvedValue('{ not json');
+    await renderPage();
+    await userEvent.setup().click(screen.getByRole('button', { name: '导入 JSON' }));
+    await waitFor(() => expect(spy).toHaveBeenCalledWith(expect.stringMatching(/^JSON 解析失败：/)));
+  });
+});
+
+describe('InstrumentsPage 新建按钮离开保护', () => {
+  it('编辑器有未保存修改时点新建先确认，取消后仍停留在编辑', async () => {
+    customs = [{ ...myLyre }];
+    const { user } = await renderPage();
+    await user.click(screen.getByText('我的琴'));
+    await user.click(screen.getByRole('button', { name: '编辑' }));
+    await user.type(screen.getByLabelText('名称'), '二');
+    await user.click(screen.getByRole('button', { name: '新建' }));
+    expect(screen.getByRole('alertdialog', { name: '有未保存的修改' })).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: '继续编辑' }));
+    expect(screen.getByLabelText('名称')).toHaveValue('我的琴二');
   });
 });

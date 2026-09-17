@@ -1,4 +1,4 @@
-import { Copy, FilePlus, Pencil, Timer, Trash2, TriangleAlert } from 'lucide-react';
+import { Copy, Download, FilePlus, Pencil, Timer, Trash2, TriangleAlert, Upload } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
@@ -15,13 +15,16 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import type { InstrumentProfile } from '@/core/model/instrument';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { isBuiltinInstrumentId } from '@/core/instruments/registry';
+import { type InstrumentProfile, validateInstrumentProfile } from '@/core/model/instrument';
 import { midiToNoteName } from '@/core/music/pitch';
 import { useNavigationStore } from '@/stores/navigationStore';
 import { useInstrumentStore } from '@/stores/instrumentStore';
 import { copyProfile } from './copyProfile';
 import { InstrumentEditor } from './InstrumentEditor';
 import { KeycapPreview, voiceLabel } from './KeycapPreview';
+import { pickJsonFile, writeJsonFile } from './profileFiles';
 
 interface EditingState {
   profile: InstrumentProfile;
@@ -37,7 +40,7 @@ interface ConfirmState {
   onCancel?: () => void;
 }
 
-/** 乐器页：左侧内置 / 自定义列表，右侧详情或编辑器 */
+/** 乐器页：左侧内置 / 自定义列表，右侧详情或编辑器，支持导入 / 导出 JSON */
 export function InstrumentsPage() {
   const entries = useInstrumentStore((state) => state.entries);
   const warnings = useInstrumentStore((state) => state.warnings);
@@ -49,6 +52,7 @@ export function InstrumentsPage() {
   const [dirty, setDirty] = useState(false);
   const [confirmState, setConfirmState] = useState<ConfirmState | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<InstrumentProfile | null>(null);
+  const [importErrors, setImportErrors] = useState<string[] | null>(null);
   const [warningsOpen, setWarningsOpen] = useState(false);
 
   const selected = entries.find((entry) => entry.profile.id === selectedId);
@@ -108,6 +112,52 @@ export function InstrumentsPage() {
     }
   };
 
+  const finishImport = async (profile: InstrumentProfile) => {
+    if (await saveProfile(profile)) {
+      toast.success('已导入自定义乐器');
+      setEditing(null);
+      select(profile.id);
+    }
+  };
+
+  const doImport = async () => {
+    const picked = await pickJsonFile();
+    if (!picked) return;
+    let raw: unknown;
+    try {
+      raw = JSON.parse(picked.text);
+    } catch (error) {
+      toast.error(`JSON 解析失败：${(error as Error).message}`);
+      return;
+    }
+    const result = validateInstrumentProfile(raw);
+    if (!result.ok) {
+      setImportErrors(result.errors);
+      return;
+    }
+    const profile = result.value;
+    if (isBuiltinInstrumentId(profile.id)) {
+      toast.error('这个 ID 属于内置乐器，请修改 ID 后再导入');
+      return;
+    }
+    if (entries.some((entry) => entry.profile.id === profile.id)) {
+      setConfirmState({
+        title: '覆盖已有乐器？',
+        description: `已有同 ID 的自定义乐器「${profile.id}」，导入会覆盖它。`,
+        actionText: '覆盖',
+        onAction: () => void finishImport(profile),
+      });
+      return;
+    }
+    await finishImport(profile);
+  };
+
+  const exportProfile = async (profile: InstrumentProfile) => {
+    if (await writeJsonFile(`${profile.id}.json`, JSON.stringify(profile, null, 2))) {
+      toast.success('已导出乐器配置');
+    }
+  };
+
   const handleDelete = async () => {
     if (!deleteTarget) return;
     const target = deleteTarget;
@@ -147,8 +197,11 @@ export function InstrumentsPage() {
     <div className="flex min-h-0 flex-1">
       <div className="flex w-72 shrink-0 flex-col gap-2 border-r p-4">
         <div className="flex gap-2">
-          <Button variant="outline" size="sm" className="flex-1" onClick={startNew}>
+          <Button variant="outline" size="sm" className="flex-1" onClick={() => requestLeave(startNew)}>
             <FilePlus /> 新建
+          </Button>
+          <Button variant="outline" size="sm" className="flex-1" onClick={() => void doImport()}>
+            <Upload /> 导入 JSON
           </Button>
         </div>
         {warnings.length > 0 && (
@@ -212,19 +265,24 @@ export function InstrumentsPage() {
               </div>
               <div className="flex flex-wrap gap-2">
                 {selected.builtin ? (
-                  <Button variant="outline" size="sm" onClick={() => void copyToCustom(selected.profile, true)}>
-                    <Copy /> 复制为自定义
-                  </Button>
+                  <>
+                    <Button variant="outline" size="sm" onClick={() => void copyToCustom(selected.profile, true)}>
+                      <Copy /> 复制为自定义
+                    </Button>
+                    <Button variant="outline" size="sm" onClick={() => void exportProfile(selected.profile)}>
+                      <Download /> 导出 JSON
+                    </Button>
+                  </>
                 ) : (
                   <>
-                    <Button
-                      size="sm"
-                      onClick={() => setEditing({ profile: selected.profile, saved: true })}
-                    >
+                    <Button size="sm" onClick={() => setEditing({ profile: selected.profile, saved: true })}>
                       <Pencil /> 编辑
                     </Button>
                     <Button variant="outline" size="sm" onClick={() => void copyToCustom(selected.profile, false)}>
                       <Copy /> 复制
+                    </Button>
+                    <Button variant="outline" size="sm" onClick={() => void exportProfile(selected.profile)}>
+                      <Download /> 导出 JSON
                     </Button>
                     <Button variant="outline" size="sm" onClick={() => setDeleteTarget(selected.profile)}>
                       <Trash2 /> 删除
@@ -321,6 +379,24 @@ export function InstrumentsPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+      <Dialog open={importErrors !== null} onOpenChange={(open) => !open && setImportErrors(null)}>
+        <DialogContent showCloseButton={false} className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>乐器配置校验失败</DialogTitle>
+            <DialogDescription>导入的文件存在以下问题，请修改后再试：</DialogDescription>
+          </DialogHeader>
+          <ul className="list-disc pl-5 text-sm">
+            {(importErrors ?? []).map((message) => (
+              <li key={message}>{message}</li>
+            ))}
+          </ul>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setImportErrors(null)}>
+              知道了
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
