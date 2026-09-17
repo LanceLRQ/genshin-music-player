@@ -52,6 +52,16 @@ export function KeyCaptureButton({ value, onCapture }: KeyCaptureButtonProps) {
     };
   }, [capturing, onCapture]);
 
+  // 行的上移 / 下移 / 删除会复用同一位置的组件实例：value 变化而乐观键码对不上时，
+  // 在 render 期间清除乐观键码，避免显示与数据不一致的旧按键
+  const [prevValue, setPrevValue] = useState(value);
+  if (prevValue !== value) {
+    setPrevValue(value);
+    if (!capturing && capturedCode !== null && capturedCode !== value) {
+      setCapturedCode(null);
+    }
+  }
+
   const displayCode = capturedCode ?? value;
 
   if (capturing) {

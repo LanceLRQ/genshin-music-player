@@ -200,7 +200,7 @@ export function InstrumentsPage() {
           <Button variant="outline" size="sm" className="flex-1" onClick={() => requestLeave(startNew)}>
             <FilePlus /> 新建
           </Button>
-          <Button variant="outline" size="sm" className="flex-1" onClick={() => void doImport()}>
+          <Button variant="outline" size="sm" className="flex-1" onClick={() => void requestLeave(() => void doImport())}>
             <Upload /> 导入 JSON
           </Button>
         </div>

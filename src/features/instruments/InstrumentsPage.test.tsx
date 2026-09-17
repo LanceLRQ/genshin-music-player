@@ -247,7 +247,7 @@ describe('InstrumentsPage 导入与导出', () => {
   });
 });
 
-describe('InstrumentsPage 新建按钮离开保护', () => {
+describe('InstrumentsPage 顶栏按钮离开保护', () => {
   it('编辑器有未保存修改时点新建先确认，取消后仍停留在编辑', async () => {
     customs = [{ ...myLyre }];
     const { user } = await renderPage();
@@ -255,6 +255,18 @@ describe('InstrumentsPage 新建按钮离开保护', () => {
     await user.click(screen.getByRole('button', { name: '编辑' }));
     await user.type(screen.getByLabelText('名称'), '二');
     await user.click(screen.getByRole('button', { name: '新建' }));
+    expect(screen.getByRole('alertdialog', { name: '有未保存的修改' })).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: '继续编辑' }));
+    expect(screen.getByLabelText('名称')).toHaveValue('我的琴二');
+  });
+
+  it('编辑器有未保存修改时点导入 JSON 先确认，取消后仍停留在编辑', async () => {
+    customs = [{ ...myLyre }];
+    const { user } = await renderPage();
+    await user.click(screen.getByText('我的琴'));
+    await user.click(screen.getByRole('button', { name: '编辑' }));
+    await user.type(screen.getByLabelText('名称'), '二');
+    await user.click(screen.getByRole('button', { name: '导入 JSON' }));
     expect(screen.getByRole('alertdialog', { name: '有未保存的修改' })).toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: '继续编辑' }));
     expect(screen.getByLabelText('名称')).toHaveValue('我的琴二');

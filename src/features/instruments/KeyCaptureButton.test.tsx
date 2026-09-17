@@ -51,6 +51,22 @@ describe('KeyCaptureButton', () => {
     expect(screen.getByText('Space')).toBeInTheDocument();
   });
 
+  it('value 变化后显示跟随新值，不再显示旧捕获的键码', async () => {
+    const user = userEvent.setup();
+    const onCapture = vi.fn();
+    const { rerender } = render(<KeyCaptureButton value="KeyQ" onCapture={onCapture} />);
+    await user.click(screen.getByRole('button', { name: 'Q' }));
+    fireEvent.keyDown(document, { code: 'KeyS', key: 's' });
+    expect(onCapture).toHaveBeenCalledWith('KeyS');
+    // 父组件应用捕获结果，乐观显示与数据一致
+    rerender(<KeyCaptureButton value="KeyS" onCapture={onCapture} />);
+    expect(screen.getByText('S')).toBeInTheDocument();
+    // 行的上移 / 下移 / 删除会复用同一位置的组件实例：value 换成别的键后显示必须跟着换
+    rerender(<KeyCaptureButton value="KeyA" onCapture={onCapture} />);
+    expect(screen.getByText('A')).toBeInTheDocument();
+    expect(screen.queryByText('S')).not.toBeInTheDocument();
+  });
+
   it('两个按钮同时捕获时，一次按键只被先进入捕获态的按钮捕获', async () => {
     const onCaptureA = vi.fn();
     const onCaptureB = vi.fn();
