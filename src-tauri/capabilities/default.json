@@ -1,0 +1,12 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "default",
+  "description": "主窗口的权限：核心功能、文件对话框，以及读写对话框选中或拖入的文件",
+  "windows": ["main"],
+  "permissions": [
+    "core:default",
+    "dialog:default",
+    "fs:allow-read-file",
+    "fs:allow-write-file"
+  ]
+}
