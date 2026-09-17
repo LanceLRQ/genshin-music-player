@@ -65,7 +65,7 @@ describe('App', () => {
     expect(useSettingsStore.getState().settings).toEqual(DEFAULT_SETTINGS);
     expect(screen.getByText('模拟模式')).toBeInTheDocument();
     expect(screen.getByText('F9')).toBeInTheDocument();
-    expect(screen.getByText('演奏页尚未实现。')).toBeInTheDocument();
+    expect(screen.getByText('导入乐谱开始')).toBeInTheDocument();
     expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument();
   });
 
@@ -90,10 +90,10 @@ describe('App', () => {
     expect(spy).not.toHaveBeenCalled();
   });
 
-  it('首次启动时先显示风险提示', () => {
+  it('首次启动时先显示风险提示', async () => {
     localStorage.clear();
     useDisclaimerStore.getState().init();
     render(<App />);
-    expect(screen.getByRole('alertdialog', { name: '使用前请阅读' })).toBeInTheDocument();
+    expect(await screen.findByRole('alertdialog', { name: '使用前请阅读' })).toBeInTheDocument();
   });
 });
