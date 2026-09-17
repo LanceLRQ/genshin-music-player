@@ -3,7 +3,7 @@
 use std::panic::{AssertUnwindSafe, catch_unwind};
 use std::sync::mpsc::{self, Receiver, RecvTimeoutError, Sender, TryRecvError};
 use std::sync::{Arc, Mutex, PoisonError};
-use std::thread::{self, JoinHandle};
+use std::thread::{self, JoinHandle, ThreadId};
 use std::time::{Duration, Instant};
 
 use super::core::{PlayerConfig, PlayerCore, Wake};
@@ -21,10 +21,14 @@ struct Request {
     reply: Sender<Result<(), CoreError>>,
 }
 
+/// 调度线程驱动 [`PlayerCore`] 并在其上同步调用 sink 的回调（见 [`PlayerSink`]）。
+/// `Player` 本身是 `Send + Sync`，可以直接用 `Arc` 在多处共享，不需要再包一层 `Mutex`。
 pub struct Player {
     tx: Sender<Request>,
     state: Arc<Mutex<PlayerState>>,
     join: Option<JoinHandle<()>>,
+    /// 播放线程的 id，用来在 `send`/`drop` 时判断"是不是在自己等自己"
+    player_thread_id: ThreadId,
 }
 
 impl Player {
@@ -49,15 +53,25 @@ impl Player {
                 run(core, &rx, &shared);
             })
             .expect("无法创建播放线程");
+        let player_thread_id = join.thread().id();
         Player {
             tx,
             state,
             join: Some(join),
+            player_thread_id,
         }
     }
 
-    /// 等播放线程处理完这条命令后返回结果（Play 的忙碌检查在线程内完成）
+    /// 等播放线程处理完这条命令后返回结果（Play 的忙碌检查在线程内完成）。
+    ///
+    /// 绝不能在 [`PlayerSink`] 回调里同步调用本方法：回调本身运行在播放线程上，
+    /// 而这次调用要等的正是播放线程处理完当前命令——播放线程在等自己，会永久卡死
+    /// （可能还按着没松开的键）。检测到这种情况会立即返回 `INVALID_STATE` 错误，
+    /// 不会等待、也不会把命令放进队列。
     pub fn send(&self, command: Command) -> Result<(), CoreError> {
+        if thread::current().id() == self.player_thread_id {
+            return Err(CoreError::invalid_state("在播放线程内发送命令"));
+        }
         let (reply, response) = mpsc::channel();
         self.tx
             .send(Request { command, reply })
@@ -76,6 +90,16 @@ impl Player {
 
 impl Drop for Player {
     fn drop(&mut self) {
+        // 同样要考虑在播放线程上被 drop 的情况（例如 sink 持有了最后一份引用）：
+        // 只能异步通知关闭，不能等回复，更不能 join 自己所在的线程。
+        if thread::current().id() == self.player_thread_id {
+            let (reply, _response) = mpsc::channel();
+            let _ = self.tx.send(Request {
+                command: Command::Shutdown,
+                reply,
+            });
+            return;
+        }
         let _ = self.send(Command::Shutdown);
         if let Some(join) = self.join.take() {
             let _ = join.join();

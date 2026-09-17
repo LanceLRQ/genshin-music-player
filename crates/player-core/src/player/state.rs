@@ -59,6 +59,16 @@ pub struct Summary {
     pub log_path: Option<String>,
 }
 
+/// 演奏事件回调。三个方法都在播放线程（调度线程，由 `Player::spawn` 创建）上
+/// 同步调用；播放线程会等回调返回才继续处理下一条命令或推进时间线。
+///
+/// 因此实现回调时：
+/// - **不能**在回调里同步调用同一个 `Player` 的 `send`——那是在等播放线程处理完
+///   一条命令，而播放线程正忙着执行这个回调本身，两者是同一个线程，会永久卡死
+///   （`Player::send` 检测到这种情况会直接返回 `INVALID_STATE` 错误，不会阻塞，
+///   但业务上仍然达不到目的）。
+/// - **不能**在回调里获取可能被 `send` 调用方（通常是主线程/UI 线程）持有的锁，
+///   否则同样可能与播放线程相互等待造成死锁。
 pub trait PlayerSink: Send {
     fn on_state(&self, state: &PlayerState);
     fn on_progress(&self, progress: &Progress);

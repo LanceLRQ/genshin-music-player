@@ -127,7 +127,7 @@ impl<B: InputBackend, P: WindowProbe, S: PlayerSink> PlayerCore<B, P, S> {
                 if !matches!(self.state, PlayerState::Idle | PlayerState::Error { .. }) {
                     return Err(CoreError::player_busy());
                 }
-                self.start(execution, countdown_sec, now_us);
+                self.start(execution, countdown_sec, now_us)?;
             }
             Command::Toggle {
                 execution,
@@ -135,7 +135,7 @@ impl<B: InputBackend, P: WindowProbe, S: PlayerSink> PlayerCore<B, P, S> {
             } => match self.state {
                 PlayerState::Idle | PlayerState::Error { .. } => {
                     if let Some(execution) = execution {
-                        self.start(execution, countdown_sec, now_us);
+                        self.start(execution, countdown_sec, now_us)?;
                     }
                 }
                 PlayerState::Playing => self.pause(PauseReason::User, now_us),
@@ -203,14 +203,21 @@ impl<B: InputBackend, P: WindowProbe, S: PlayerSink> PlayerCore<B, P, S> {
         self.fail(CoreError::player_panic());
     }
 
-    fn start(&mut self, execution: Arc<ExecutionTimeline>, countdown_sec: u32, now_us: i64) {
+    /// 开始一次新的演奏；残留按键补发松开失败时返回 `Err`（此时已进入 `Error` 状态，
+    /// 调用方必须把错误往外传，不能当成开始成功处理）。
+    fn start(
+        &mut self,
+        execution: Arc<ExecutionTimeline>,
+        countdown_sec: u32,
+        now_us: i64,
+    ) -> Result<(), CoreError> {
         // 上一次演奏可能因 Stop 时 release_all 失败而残留按下的键：
         // 若不先补发松开，这些键的 down 会被 KeyboardOutput 当成"已按下"过滤掉，导致吞音。
         if !self.output.pressed().is_empty()
             && let Err(error) = self.output.release_all()
         {
-            self.fail(error);
-            return;
+            self.fail(error.clone());
+            return Err(error);
         }
         self.log.reset();
         self.session = Some(Session {
@@ -229,6 +236,7 @@ impl<B: InputBackend, P: WindowProbe, S: PlayerSink> PlayerCore<B, P, S> {
         } else {
             self.check_focus(now_us);
         }
+        Ok(())
     }
 
     /// 前台判断：在前台就从保存的位置开始演奏，否则进入 WaitingFocus 并在 100ms 后再判断

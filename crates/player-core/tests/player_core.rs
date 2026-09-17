@@ -783,11 +783,14 @@ fn play_fails_when_leftover_release_fails() {
     assert_eq!(h.core.state(), &PlayerState::Idle);
     assert_eq!(h.sink.summaries().len(), 1);
 
-    // 残留键仍在；这次 Play 补发松开失败 → 不创建会话，直接进入 Error。
+    // 残留键仍在；这次 Play 补发松开失败 → 不创建会话，直接进入 Error，并把错误
+    // 返回给调用方（而不是像正常流程一样返回 Ok，让调用方误以为已经开始播放）。
     // fail() 内部会再尝试一次 release_all（MockBackend 只让"下一次"调用失败），
     // 这次成功，所以键最终还是被尽力松开了，但状态已经是 Error。
     h.backend.fail_next_call();
-    h.core.handle(play(two_notes(), 0), ms(200)).unwrap();
+    let error = h.core.handle(play(two_notes(), 0), ms(200)).unwrap_err();
+    assert_eq!(error.code, ErrorCode::InputSendFailed);
+    assert_eq!(error.message, "按键发送失败（系统错误 5）");
     assert_eq!(
         h.core.state(),
         &PlayerState::Error {
@@ -804,5 +807,33 @@ fn play_fails_when_leftover_release_fails() {
         h.sink.summaries().len(),
         1,
         "进入 Error 时不产生新的 Summary"
+    );
+    assert_eq!(
+        h.core.advance(ms(200)),
+        Wake::WaitForCommand,
+        "没有进入 Countdown/Playing，advance 不需要再被唤醒"
+    );
+}
+
+#[test]
+fn stop_from_error_returns_to_idle_without_summary() {
+    let mut h = harness();
+    h.core.handle(play(overlapping(), 0), ms(0)).unwrap();
+    h.core.advance(ms(0));
+    h.backend.fail_next_call();
+    h.core.handle(Command::Stop, ms(100)).unwrap();
+    assert_eq!(h.sink.summaries().len(), 1);
+
+    // 通过补发松开失败进入 Error（与上一个测试相同的路径）
+    h.backend.fail_next_call();
+    h.core.handle(play(two_notes(), 0), ms(200)).unwrap_err();
+    assert!(matches!(h.core.state(), PlayerState::Error { .. }));
+
+    h.core.handle(Command::Stop, ms(300)).unwrap();
+    assert_eq!(h.core.state(), &PlayerState::Idle);
+    assert_eq!(
+        h.sink.summaries().len(),
+        1,
+        "Error 状态下 Stop 不输出新的 Summary"
     );
 }
