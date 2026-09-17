@@ -1,5 +1,6 @@
 import { clearMocks, mockIPC } from '@tauri-apps/api/mocks';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { toast } from 'sonner';
 import { BUILTIN_INSTRUMENTS } from '@/core/instruments/registry';
 import type { CustomInstrumentList } from '@/ipc/types';
 import { DEFAULT_INSTRUMENT_ID, useInstrumentStore } from './instrumentStore';
@@ -19,6 +20,7 @@ beforeEach(() => {
 
 afterEach(() => {
   clearMocks();
+  vi.restoreAllMocks();
 });
 
 describe('instrumentStore', () => {
@@ -77,5 +79,72 @@ describe('instrumentStore', () => {
     mockCustomInstruments({ profiles: [], warnings: [] });
     await useInstrumentStore.getState().load();
     expect(useInstrumentStore.getState().selectedId).toBe('windsong-lyre');
+  });
+});
+
+describe('instrumentStore 保存与删除', () => {
+  it('save 调用 save_custom_instrument 后重新加载列表并选中', async () => {
+    const customs: unknown[] = [];
+    mockIPC((cmd, args) => {
+      if (cmd === 'save_custom_instrument') {
+        customs.push((args as { profile: unknown }).profile);
+        return null;
+      }
+      if (cmd === 'list_custom_instruments') return { profiles: customs, warnings: [] };
+      return null;
+    });
+    const profile = { ...lyre, id: 'my-lyre', name: '我的琴', status: 'unverified' } as typeof lyre;
+    await expect(useInstrumentStore.getState().save(profile)).resolves.toBe(true);
+    expect(idsOf()).toEqual([...builtinIds, 'my-lyre']);
+    expect(useInstrumentStore.getState().selectedId).toBe('my-lyre');
+  });
+
+  it('save 失败时用 toast 提示并返回 false', async () => {
+    const spy = vi.spyOn(toast, 'error');
+    mockIPC((cmd) => (cmd === 'save_custom_instrument' ? Promise.reject({ code: 'INSTRUMENT_ID_CONFLICT', message: 'id 与内置乐器冲突' }) : null));
+    const profile = { ...lyre, id: 'my-lyre', name: '我的琴', status: 'unverified' } as typeof lyre;
+    await expect(useInstrumentStore.getState().save(profile)).resolves.toBe(false);
+    expect(spy).toHaveBeenCalledWith('保存乐器失败：id 与内置乐器冲突');
+    expect(idsOf()).toEqual(builtinIds);
+  });
+
+  it('remove 删除后重新加载，选中回到默认乐器', async () => {
+    const customs = [custom('my-lyre', '我的琴')];
+    mockIPC((cmd, args) => {
+      if (cmd === 'delete_custom_instrument') {
+        customs.splice(0, customs.length);
+        return null;
+      }
+      if (cmd === 'list_custom_instruments') return { profiles: customs, warnings: [] };
+      void args;
+      return null;
+    });
+    await useInstrumentStore.getState().load();
+    useInstrumentStore.getState().select('my-lyre');
+    await expect(useInstrumentStore.getState().remove('my-lyre')).resolves.toBe(true);
+    expect(idsOf()).toEqual(builtinIds);
+    expect(useInstrumentStore.getState().selectedId).toBe('windsong-lyre');
+  });
+
+  it('remove 失败时用 toast 提示并返回 false', async () => {
+    const spy = vi.spyOn(toast, 'error');
+    mockIPC((cmd) => (cmd === 'delete_custom_instrument' ? Promise.reject({ code: 'STORAGE_IO', message: '读写文件失败：权限不足' }) : null));
+    await expect(useInstrumentStore.getState().remove('my-lyre')).resolves.toBe(false);
+    expect(spy).toHaveBeenCalledWith('删除乐器失败：读写文件失败：权限不足');
+  });
+
+  it('已连接后端时 load 失败用 toast 提示', async () => {
+    const spy = vi.spyOn(toast, 'error');
+    mockIPC(() => Promise.reject({ code: 'STORAGE_IO', message: '读写文件失败：磁盘已满' }));
+    await useInstrumentStore.getState().load();
+    expect(spy).toHaveBeenCalledWith('读取乐器列表失败：读写文件失败：磁盘已满');
+    expect(idsOf()).toEqual(builtinIds);
+  });
+
+  it('没有后端时 load 失败保持静默', async () => {
+    const spy = vi.spyOn(toast, 'error');
+    await useInstrumentStore.getState().load();
+    expect(useInstrumentStore.getState().status).toBe('error');
+    expect(spy).not.toHaveBeenCalled();
   });
 });
