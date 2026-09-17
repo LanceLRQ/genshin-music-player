@@ -119,6 +119,10 @@ impl AppError {
         Self::new(AppErrorCode::TimelineInvalid, message)
     }
 
+    pub fn params_invalid(message: impl Into<String>) -> Self {
+        Self::new(AppErrorCode::ParamsInvalid, message)
+    }
+
     pub fn no_execution() -> Self {
         Self::new(
             AppErrorCode::NoExecution,

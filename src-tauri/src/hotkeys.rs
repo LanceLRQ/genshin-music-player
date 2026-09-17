@@ -102,14 +102,29 @@ pub fn replace_hotkeys(
     old: &Hotkeys,
     new: &Hotkeys,
 ) -> Result<(), AppError> {
-    let previously_registered: Vec<&str> = values(old)
+    with_hotkeys_released(registrar, old, || register_hotkeys(registrar, new))
+}
+
+/// 注销 `hotkeys` 中当前已注册的键，执行 `f`：
+/// - `f` 返回 `Err` 时尽力恢复注销前已注册的键，恢复失败的键会追加进错误信息（与上面 `replace_hotkeys`
+///   的文案风格一致），避免用户以为原热键仍然有效；
+/// - `f` 返回 `Ok` 时不恢复——调用方（例如提权重启）通常会紧接着注册新的热键或直接退出进程。
+///
+/// `replace_hotkeys` 和 `restart_as_admin` 命令都基于这个函数：前者的 `f` 是重新注册新热键，
+/// 后者的 `f` 是拉起提权后的新进程。
+pub fn with_hotkeys_released<T>(
+    registrar: &impl HotkeyRegistrar,
+    hotkeys: &Hotkeys,
+    f: impl FnOnce() -> Result<T, AppError>,
+) -> Result<T, AppError> {
+    let previously_registered: Vec<&str> = values(hotkeys)
         .into_iter()
         .filter(|value| registrar.is_registered(value))
         .collect();
     for value in &previously_registered {
         let _ = registrar.unregister(value);
     }
-    register_hotkeys(registrar, new).map_err(|mut error| {
+    f().map_err(|mut error| {
         let not_restored: Vec<&str> = previously_registered
             .into_iter()
             .filter(|value| registrar.register(value).is_err())
@@ -125,4 +140,14 @@ pub fn replace_hotkeys(
         }
         error
     })
+}
+
+/// 尽力补注册 `hotkeys` 中当前未注册的键（例如启动时因为被占用而注册失败的）；单个失败会被忽略、
+/// 不返回错误——调用方此时只是想顺带修复一下，不应该因为某个键仍被占用而阻塞其他操作
+pub fn register_missing_hotkeys(registrar: &impl HotkeyRegistrar, hotkeys: &Hotkeys) {
+    for value in values(hotkeys) {
+        if !registrar.is_registered(value) {
+            let _ = registrar.register(value);
+        }
+    }
 }

@@ -13,6 +13,7 @@ use tauri::{AppHandle, Runtime, State};
 use tauri_plugin_global_shortcut::GlobalShortcutExt;
 
 use crate::error::AppError;
+use crate::hotkeys::with_hotkeys_released;
 use crate::settings::Settings;
 use crate::state::{AppState, EnvInfo};
 use crate::storage::CustomInstrumentList;
@@ -25,13 +26,19 @@ pub fn get_env<R: Runtime>(app: AppHandle<R>, state: State<'_, AppState>) -> Env
     )
 }
 
-/// 成功时先停止演奏（松开所有按键），再退出当前进程，由新进程接替
+/// 提权前先注销当前热键，避免新旧进程同时占着 F9 / F10 导致新进程 setup 时注册失败：
+/// 提权失败时尽力恢复热键（`with_hotkeys_released`）后把错误返回给前端；
+/// 提权成功时热键保持注销（新进程的 setup 会重新注册），先停止演奏（松开所有按键），再退出当前进程。
 #[tauri::command]
 pub fn restart_as_admin<R: Runtime>(
     app: AppHandle<R>,
     state: State<'_, AppState>,
 ) -> Result<(), AppError> {
-    platform::restart_as_admin()?;
+    let hotkeys = state.settings().hotkeys;
+    with_hotkeys_released(app.global_shortcut(), &hotkeys, || {
+        platform::restart_as_admin().map_err(AppError::from)
+    })?;
+    // 即将退出进程：stop 失败（例如已经是 Idle 返回 INVALID_STATE）不影响退出，忽略错误
     let _ = state.stop();
     app.exit(0);
     Ok(())

@@ -12,7 +12,7 @@ use ShortcutScope::{Global, Window};
 
 #[test]
 fn default_settings_match_frontend_defaults() {
-    // 来源：docs/_internal/milestones/03-M3b-界面框架.md 任务 2 中 `src/ipc/types.ts` 的 `DEFAULT_SETTINGS`
+    // 来源：前端 `src/ipc/types.ts` 的 `DEFAULT_SETTINGS`
     assert_eq!(
         serde_json::to_value(Settings::default()).unwrap(),
         json!({

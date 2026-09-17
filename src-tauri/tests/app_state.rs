@@ -6,7 +6,7 @@ use std::fs;
 
 use common::{FakeRegistrar, hotkeys, key_timeline, strings, test_app, wait_until};
 use genshin_music_player_lib::error::AppErrorCode;
-use genshin_music_player_lib::hotkeys::{HotkeyAction, register_hotkeys};
+use genshin_music_player_lib::hotkeys::{HotkeyAction, register_hotkeys, register_on_startup};
 use genshin_music_player_lib::settings::{Settings, load_settings};
 use genshin_music_player_lib::state::current_platform;
 use player_core::guard::WindowRule;
@@ -135,6 +135,23 @@ fn play_uses_settings_countdown_unless_given() {
 }
 
 #[test]
+fn play_rejects_countdown_above_max() {
+    let app = test_app(Settings::default());
+    let timeline = key_timeline(&[(0.0, "KeyA")], 1000.0);
+    app.state
+        .build_execution(&timeline, &params_for(1000.0))
+        .unwrap();
+    let error = app.state.play(Some(11)).unwrap_err();
+    assert_eq!(error.code, AppErrorCode::ParamsInvalid);
+    assert_eq!(error.message, "倒计时不能超过 10 秒");
+    assert_eq!(
+        app.state.player_state(),
+        PlayerState::Idle,
+        "参数无效时不应该开始播放"
+    );
+}
+
+#[test]
 fn pause_and_resume_errors_keep_core_codes() {
     let app = test_app(Settings::default());
     let error = app.state.resume().unwrap_err();
@@ -236,6 +253,34 @@ fn hotkey_failure_keeps_old_settings_and_hotkeys() {
     assert_eq!(registrar.registered(), strings(&["F10", "F9"]));
     assert_eq!(app.state.settings(), Settings::default());
     assert!(!app.state.paths.settings_file.exists());
+}
+
+#[test]
+fn save_settings_registers_missing_hotkeys_when_hotkeys_unchanged() {
+    let app = test_app(Settings::default());
+    let registrar = FakeRegistrar::occupied(&["F9"]);
+    register_on_startup(&registrar, &Settings::default().hotkeys);
+    assert_eq!(
+        registrar.registered(),
+        strings(&["F10"]),
+        "启动时 F9 被占用，只注册成功 F10"
+    );
+
+    let settings = Settings {
+        countdown_sec: 5,
+        ..Settings::default()
+    };
+    let saved = app
+        .state
+        .save_settings(settings.clone(), &registrar)
+        .unwrap();
+    assert_eq!(saved, settings);
+    assert_eq!(app.state.settings(), settings);
+    assert_eq!(
+        registrar.registered(),
+        strings(&["F10"]),
+        "热键不变时尽力补注册 F9，仍被占用则忽略失败，不影响保存"
+    );
 }
 
 #[test]

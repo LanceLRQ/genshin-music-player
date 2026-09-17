@@ -2,8 +2,7 @@ use genshin_music_player_lib::error::{AppError, AppErrorCode};
 use player_core::error::{CoreError, ErrorCode};
 use serde_json::json;
 
-/// 来源：docs/_internal/milestones/03-M3b-界面框架.md 任务 2 中 `src/ipc/types.ts` 的 `BACKEND_ERROR_CODES`。
-/// 计划 3b 执行后，前端列表与这里必须保持一致。
+/// 来源：前端 `src/ipc/types.ts` 的 `BACKEND_ERROR_CODES`。前端列表变化时这里必须保持一致。
 const FRONTEND_BACKEND_ERROR_CODES: [&str; 16] = [
     "TIMELINE_INVALID",
     "UNKNOWN_KEY_CODE",
@@ -97,5 +96,13 @@ fn app_error_messages_are_chinese() {
     assert_eq!(
         AppError::storage_io("磁盘已满").message,
         "读写文件失败：磁盘已满"
+    );
+    assert_eq!(
+        AppError::params_invalid("倒计时不能超过 10 秒").message,
+        "倒计时不能超过 10 秒"
+    );
+    assert_eq!(
+        AppError::params_invalid("倒计时不能超过 10 秒").code,
+        AppErrorCode::ParamsInvalid
     );
 }

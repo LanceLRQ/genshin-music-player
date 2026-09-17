@@ -13,8 +13,8 @@ use serde::Serialize;
 use serde_json::Value;
 
 use crate::error::AppError;
-use crate::hotkeys::{HotkeyAction, HotkeyRegistrar, replace_hotkeys};
-use crate::settings::{Settings, save_settings_file, validate_settings};
+use crate::hotkeys::{HotkeyAction, HotkeyRegistrar, register_missing_hotkeys, replace_hotkeys};
+use crate::settings::{MAX_COUNTDOWN_SEC, Settings, save_settings_file, validate_settings};
 use crate::storage::{self, AppPaths, CustomInstrumentList};
 
 /// `get_env` 的返回值
@@ -136,10 +136,18 @@ impl AppState {
         Ok(execution)
     }
 
-    /// 演奏"当前演奏"；不传倒计时时用设置里的值
+    /// 演奏"当前演奏"；不传倒计时时用设置里的值；显式传入的倒计时超过 MAX_COUNTDOWN_SEC 时返回参数错误
     pub fn play(&self, countdown_sec: Option<u32>) -> Result<(), AppError> {
         let execution = self.current().ok_or_else(AppError::no_execution)?;
-        let countdown_sec = countdown_sec.unwrap_or_else(|| self.settings().countdown_sec);
+        let countdown_sec = match countdown_sec {
+            Some(seconds) if seconds > MAX_COUNTDOWN_SEC => {
+                return Err(AppError::params_invalid(format!(
+                    "倒计时不能超过 {MAX_COUNTDOWN_SEC} 秒"
+                )));
+            }
+            Some(seconds) => seconds,
+            None => self.settings().countdown_sec,
+        };
         self.send(Command::Play {
             execution,
             countdown_sec,
@@ -173,8 +181,11 @@ impl AppState {
         }
     }
 
-    /// 校验 → 重新注册热键（失败时恢复旧热键并报错）→ 更新窗口规则 → 更新执行日志目录 → 写文件。
-    /// 返回实际保存的设置。
+    /// 校验 → 处理热键 → 更新窗口规则 → 更新执行日志目录 → 写文件。返回实际保存的设置。
+    ///
+    /// 热键处理分两种情况：热键有变化时重新注册（失败时恢复旧热键并报错，见 `replace_hotkeys`）；
+    /// 热键没变化时只尽力补注册当前未注册的键（见 `register_missing_hotkeys`），不因为某个热键仍被
+    /// 占用（例如启动时就注册失败、此刻仍未释放）就拒绝保存其他跟热键无关的设置改动。
     pub fn save_settings(
         &self,
         settings: Settings,
@@ -182,7 +193,11 @@ impl AppState {
     ) -> Result<Settings, AppError> {
         validate_settings(&settings)?;
         let old = self.settings();
-        replace_hotkeys(registrar, &old.hotkeys, &settings.hotkeys)?;
+        if old.hotkeys == settings.hotkeys {
+            register_missing_hotkeys(registrar, &settings.hotkeys);
+        } else {
+            replace_hotkeys(registrar, &old.hotkeys, &settings.hotkeys)?;
+        }
         *self
             .window_rule
             .write()

@@ -1,10 +1,10 @@
 mod common;
 
 use common::{FakeRegistrar, hotkeys, strings};
-use genshin_music_player_lib::error::AppErrorCode;
+use genshin_music_player_lib::error::{AppError, AppErrorCode};
 use genshin_music_player_lib::hotkeys::{
-    HotkeyAction, hotkey_action, parse_hotkey, register_hotkeys, register_on_startup,
-    replace_hotkeys,
+    HotkeyAction, HotkeyRegistrar, hotkey_action, parse_hotkey, register_hotkeys,
+    register_missing_hotkeys, register_on_startup, replace_hotkeys, with_hotkeys_released,
 };
 use tauri_plugin_global_shortcut::{Code, Modifiers, Shortcut, ShortcutState};
 
@@ -141,4 +141,69 @@ fn replace_failure_does_not_restore_hotkeys_that_were_never_registered() {
     );
     replace_hotkeys(&registrar, &hotkeys("F9", "F10"), &hotkeys("F7", "F8")).unwrap_err();
     assert_eq!(registrar.registered(), strings(&["F10"]));
+}
+
+#[test]
+fn with_hotkeys_released_unregisters_before_f_runs() {
+    let registrar = FakeRegistrar::default();
+    register_hotkeys(&registrar, &hotkeys("F9", "F10")).unwrap();
+    let mut registered_during_f = true;
+    with_hotkeys_released(&registrar, &hotkeys("F9", "F10"), || {
+        registered_during_f = registrar.is_registered("F9") || registrar.is_registered("F10");
+        Ok::<(), AppError>(())
+    })
+    .unwrap();
+    assert!(!registered_during_f, "f 执行期间热键应当处于未注册状态");
+}
+
+#[test]
+fn with_hotkeys_released_keeps_hotkeys_unregistered_when_f_succeeds() {
+    let registrar = FakeRegistrar::default();
+    register_hotkeys(&registrar, &hotkeys("F9", "F10")).unwrap();
+    let value = with_hotkeys_released(&registrar, &hotkeys("F9", "F10"), || {
+        Ok::<u32, AppError>(42)
+    })
+    .unwrap();
+    assert_eq!(value, 42);
+    assert!(
+        registrar.registered().is_empty(),
+        "f 成功后热键应当保持注销"
+    );
+}
+
+#[test]
+fn with_hotkeys_released_restores_hotkeys_when_f_fails() {
+    let registrar = FakeRegistrar::default();
+    register_hotkeys(&registrar, &hotkeys("F9", "F10")).unwrap();
+    let error = with_hotkeys_released(&registrar, &hotkeys("F9", "F10"), || {
+        Err::<(), AppError>(AppError::new(AppErrorCode::ElevationFailed, "提权失败"))
+    })
+    .unwrap_err();
+    assert_eq!(error.message, "提权失败");
+    assert_eq!(registrar.registered(), strings(&["F10", "F9"]));
+}
+
+#[test]
+fn with_hotkeys_released_reports_hotkeys_that_could_not_be_restored() {
+    let registrar = FakeRegistrar::default().block_after_unregister(&["F9", "F10"]);
+    register_hotkeys(&registrar, &hotkeys("F9", "F10")).unwrap();
+    let error = with_hotkeys_released(&registrar, &hotkeys("F9", "F10"), || {
+        Err::<(), AppError>(AppError::new(AppErrorCode::ElevationFailed, "提权失败"))
+    })
+    .unwrap_err();
+    assert_eq!(error.message, "提权失败，原热键「F9」、「F10」也未能恢复");
+    assert!(registrar.registered().is_empty());
+}
+
+#[test]
+fn register_missing_hotkeys_only_registers_unregistered_ones() {
+    let registrar = FakeRegistrar::occupied(&["F9"]);
+    register_on_startup(&registrar, &hotkeys("F9", "F10"));
+    assert_eq!(registrar.registered(), strings(&["F10"]));
+    register_missing_hotkeys(&registrar, &hotkeys("F9", "F10"));
+    assert_eq!(
+        registrar.registered(),
+        strings(&["F10"]),
+        "F9 仍被占用，补注册失败但不报错"
+    );
 }

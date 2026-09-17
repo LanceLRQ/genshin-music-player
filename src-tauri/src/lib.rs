@@ -39,10 +39,13 @@ pub fn run() {
         .build(tauri::generate_context!())
         .expect("启动应用失败");
     app.run(|app, event| {
-        // app.exit() 最终调用 process::exit，托管的 Player 不会被 Drop，这里显式停止以松开所有按键
+        // app.exit() 最终调用 process::exit，托管的 Player 不会被 Drop，这里显式停止以松开所有按键。
+        // ExitRequested 和 Exit 在正常退出流程里都会触发一次，两次都调用 stop 是安全的：第二次调用时
+        // 播放器通常已经是 Idle，stop 等价于空操作（返回 INVALID_STATE，被下面忽略），不会重复发键。
         if matches!(event, RunEvent::ExitRequested { .. } | RunEvent::Exit)
             && let Some(state) = app.try_state::<AppState>()
         {
+            // 退出流程：即使 stop 失败也不影响退出，忽略错误
             let _ = state.stop();
         }
     });
