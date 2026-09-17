@@ -37,7 +37,8 @@ fn spawn_mock() -> (Player, MockBackend, RecordingSink) {
         MockProbe::new(),
         sink.clone(),
         PlayerConfig::default(),
-    );
+    )
+    .expect("应能创建播放线程");
     (player, backend, sink)
 }
 
@@ -160,7 +161,8 @@ fn panic_in_player_thread_enters_error_and_thread_keeps_running() {
         },
         RecordingSink::default(),
         PlayerConfig::default(),
-    );
+    )
+    .expect("应能创建播放线程");
     let timeline = execution(&[(0.0, &["KeyA"], 10.0)]);
     let error = player
         .send(Command::Play {
@@ -229,12 +231,15 @@ fn send_inside_sink_callback_returns_error_without_blocking() {
         send_result: Arc::clone(&send_result),
     };
 
-    let player = Arc::new(Player::spawn(
-        KeyboardOutput::new(MockBackend::new()),
-        MockProbe::new(),
-        sink,
-        PlayerConfig::default(),
-    ));
+    let player = Arc::new(
+        Player::spawn(
+            KeyboardOutput::new(MockBackend::new()),
+            MockProbe::new(),
+            sink,
+            PlayerConfig::default(),
+        )
+        .expect("应能创建播放线程"),
+    );
     player_slot
         .set(Arc::downgrade(&player))
         .expect("刚创建的 OnceLock 应当为空");

@@ -837,3 +837,121 @@ fn stop_from_error_returns_to_idle_without_summary() {
         "Error 状态下 Stop 不输出新的 Summary"
     );
 }
+
+// ---------------------------------------------------------------------
+// 增补：长时间停顿（睡眠唤醒、调试断点、系统卡顿）后不补发积压事件，
+// 而是把 t0 平移，让最早到期的事件恰好此刻到期。
+// ---------------------------------------------------------------------
+
+/// KeyA 0–30ms、KeyS 300–330ms、KeyD 600–630ms
+fn three_notes() -> Arc<ExecutionTimeline> {
+    execution(&[
+        (0.0, &["KeyA"], 30.0),
+        (300.0, &["KeyS"], 30.0),
+        (600.0, &["KeyD"], 30.0),
+    ])
+}
+
+#[test]
+fn stall_longer_than_threshold_shifts_t0_instead_of_bursting() {
+    let mut h = harness();
+    h.core.handle(play(three_notes(), 0), ms(0)).unwrap();
+    h.core.advance(ms(0));
+    assert_eq!(
+        h.core.advance(ms(2000)),
+        Wake::At(ms(2033)),
+        "停顿 2 秒后：KeyA 松开延迟 1970ms，t0 平移到 1970，下一次进度上报早于 KeyS（2270）"
+    );
+    assert_eq!(
+        h.backend.calls(),
+        vec![sent(&[], &["KeyA"]), sent(&["KeyA"], &[])],
+        "只发出当前到期的事件，KeyS 不会被连带补发"
+    );
+    assert_eq!(
+        h.sink.progresses().last(),
+        Some(&Progress {
+            position_ms: 30.0,
+            source_position_ms: 30.0,
+        }),
+        "进度随 t0 平移保持连续"
+    );
+    h.core.advance(ms(2269));
+    assert_eq!(h.backend.calls().len(), 2, "后续事件保持原有间隔");
+    h.core.advance(ms(2270));
+    assert_eq!(h.backend.calls().last(), Some(&sent(&[], &["KeyS"])));
+
+    h.core.handle(Command::Pause, ms(2400)).unwrap();
+    assert_eq!(
+        h.core.state(),
+        &paused(PauseReason::User, 430.0),
+        "暂停位置基于平移后的 t0"
+    );
+    h.core.handle(Command::Stop, ms(2500)).unwrap();
+    let summary = h.sink.summaries().pop().unwrap();
+    assert_eq!(summary.events_sent, 3);
+    assert_eq!(
+        summary.lateness_max_ms, 0.0,
+        "执行日志记录平移后的 target / actual"
+    );
+}
+
+#[test]
+fn lateness_within_threshold_still_catches_up_due_events() {
+    let mut h = harness();
+    h.core.handle(play(three_notes(), 0), ms(0)).unwrap();
+    h.core.advance(ms(0));
+    h.core.advance(ms(530));
+    assert_eq!(
+        h.backend.calls(),
+        vec![
+            sent(&[], &["KeyA"]),
+            sent(&["KeyA"], &[]),
+            sent(&[], &["KeyS"]),
+            sent(&["KeyS"], &[]),
+        ],
+        "延迟恰好 500ms 不算停顿，照常补发到期事件"
+    );
+}
+
+#[test]
+fn loop_stall_over_multiple_periods_starts_only_one_round() {
+    let dir = temp_log_dir("loop-stall");
+    let mut h = harness_with(PlayerConfig {
+        log_dir: Some(dir.clone()),
+        ..PlayerConfig::default()
+    });
+    h.core.handle(play(looped_range(), 0), ms(0)).unwrap();
+    for t in [0, 30, 100, 130] {
+        h.core.advance(ms(t));
+    }
+    assert_eq!(
+        h.core.advance(ms(1250)),
+        Wake::At(ms(1200)),
+        "尾部休止中停顿到 1250ms：跨过两个周期，t0 对齐到当前周期 1200"
+    );
+    assert_eq!(h.backend.calls().len(), 4, "对齐时不发送积压的轮次");
+    h.core.advance(ms(1250));
+    h.core.advance(ms(1300));
+    assert_eq!(
+        h.backend.calls(),
+        vec![
+            sent(&[], &["KeyA"]),
+            sent(&["KeyA"], &[]),
+            sent(&[], &["KeyS"]),
+            sent(&["KeyS"], &[]),
+            sent(&[], &["KeyA"]),
+            sent(&["KeyA"], &[]),
+            sent(&[], &["KeyS"]),
+        ]
+    );
+
+    h.core.handle(Command::Stop, ms(1310)).unwrap();
+    let summary = h.sink.summaries().pop().unwrap();
+    let text = fs::read_to_string(summary.log_path.unwrap()).unwrap();
+    let loop_lines: Vec<&str> = text
+        .lines()
+        .filter(|line| line.starts_with(r#"{"loop":"#))
+        .collect();
+    assert_eq!(loop_lines, vec![r#"{"loop":1}"#], "只开始了一轮");
+    fs::remove_dir_all(dir).unwrap();
+}

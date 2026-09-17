@@ -1,5 +1,6 @@
 //! Player：在独立线程中驱动 PlayerCore。等待命令通道时顺便计时，最后 2ms 自旋补齐。
 
+use std::io;
 use std::panic::{AssertUnwindSafe, catch_unwind};
 use std::sync::mpsc::{self, Receiver, RecvTimeoutError, Sender, TryRecvError};
 use std::sync::{Arc, Mutex, PoisonError};
@@ -32,12 +33,13 @@ pub struct Player {
 }
 
 impl Player {
+    /// 创建播放线程；系统无法创建线程时返回错误，不 panic
     pub fn spawn<B, P, S>(
         output: KeyboardOutput<B>,
         probe: P,
         sink: S,
         config: PlayerConfig,
-    ) -> Player
+    ) -> io::Result<Player>
     where
         B: InputBackend + 'static,
         P: WindowProbe + 'static,
@@ -51,15 +53,14 @@ impl Player {
             .spawn(move || {
                 let core = PlayerCore::new(output, probe, sink, config);
                 run(core, &rx, &shared);
-            })
-            .expect("无法创建播放线程");
+            })?;
         let player_thread_id = join.thread().id();
-        Player {
+        Ok(Player {
             tx,
             state,
             join: Some(join),
             player_thread_id,
-        }
+        })
     }
 
     /// 等播放线程处理完这条命令后返回结果（Play 的忙碌检查在线程内完成）。

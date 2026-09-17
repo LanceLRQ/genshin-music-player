@@ -146,7 +146,8 @@ fn execute(key_timeline: &KeyTimeline, args: &RunArgs) -> Result<ExitCode, Strin
             log_dir: args.log_dir(),
             ..PlayerConfig::default()
         },
-    );
+    )
+    .map_err(|error| format!("无法创建播放线程：{error}"))?;
 
     let interrupted = Arc::new(AtomicBool::new(false));
     let flag = Arc::clone(&interrupted);

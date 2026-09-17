@@ -17,6 +17,9 @@ pub const DEFAULT_PROGRESS_INTERVAL_MS: f64 = 33.0;
 pub const COUNTDOWN_TICK: Duration = Duration::from_secs(1);
 /// 等待前台时的轮询间隔
 pub const FOCUS_POLL_INTERVAL: Duration = Duration::from_millis(100);
+/// 到期事件的延迟超过这个值时，认为调度线程经历了长时间停顿（睡眠唤醒、调试断点、系统卡顿），
+/// 把 t0 向后平移让该事件恰好此刻到期，而不是一次补发积压的全部事件
+pub const STALL_RESYNC_MS: f64 = 500.0;
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct PlayerConfig {
@@ -299,10 +302,22 @@ impl<B: InputBackend, P: WindowProbe, S: PlayerSink> PlayerCore<B, P, S> {
         };
         let execution = Arc::clone(&session.execution);
         let events = &execution.events;
-        let t0_us = session.t0_us;
-        let elapsed_us = now_us - t0_us;
+        let mut t0_us = session.t0_us;
         let cursor_before = session.cursor;
         let mut cursor = cursor_before;
+
+        // 长时间停顿后不补发积压：把 t0 平移到"最早到期的事件恰好此刻到期"，
+        // 之后的事件保持原有间隔；进度和 positionMs 随 t0 平移保持连续
+        if let Some(event) = events.get(cursor) {
+            let lateness_us = now_us - (t0_us + ms_to_micros(event.t_ms));
+            if lateness_us > ms_to_micros(STALL_RESYNC_MS) {
+                t0_us += lateness_us;
+                if let Some(session) = self.session.as_mut() {
+                    session.t0_us = t0_us;
+                }
+            }
+        }
+        let elapsed_us = now_us - t0_us;
 
         let due =
             |index: usize| index < events.len() && ms_to_micros(events[index].t_ms) <= elapsed_us;
@@ -342,14 +357,17 @@ impl<B: InputBackend, P: WindowProbe, S: PlayerSink> PlayerCore<B, P, S> {
                     return Wake::WaitForCommand;
                 }
             }
-            // 循环：尾部休止结束后开始下一轮，t0 按周期累加，不受本轮延迟影响
+            // 循环：尾部休止结束后开始下一轮，t0 按周期累加，不受本轮延迟影响；
+            // 停顿跨过多个周期时直接对齐到当前周期，只开始一轮，不连播积压的轮次
             if now_us >= round_end_us {
+                let period_us = loop_period_us(&execution);
+                let next_t0_us = round_end_us + (now_us - round_end_us) / period_us * period_us;
                 self.log.mark_loop();
                 if let Some(session) = self.session.as_mut() {
-                    session.t0_us = round_end_us;
+                    session.t0_us = next_t0_us;
                     session.cursor = 0;
                 }
-                return wake_at(round_end_us + ms_to_micros(events[0].t_ms));
+                return wake_at(next_t0_us + ms_to_micros(events[0].t_ms));
             }
         }
 
