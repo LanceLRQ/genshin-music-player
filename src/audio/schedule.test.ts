@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { ExecutionTimeline, TimelineEvent } from '@/ipc/types';
-import { activeCodesAt, eventsInWindow, planLookahead, previewPositionMs, toSourcePositionMs } from './schedule';
+import { activeCodesAt, eventsInWindow, heldCodesAtEnd, planLookahead, previewPositionMs, toSourcePositionMs } from './schedule';
 
 const ev = (tMs: number, down: string[] = [], up: string[] = []): TimelineEvent => ({ tMs, up, down });
 
@@ -119,5 +119,17 @@ describe('planLookahead', () => {
       cursor: { cycleStartMs: 0, scheduledUntilMs: 0 },
       ended: true,
     });
+  });
+});
+
+describe('heldCodesAtEnd', () => {
+  it('结尾仍在持续的键被列出，已松开的不算', () => {
+    expect(heldCodesAtEnd(execution([ev(0, ['KeyA']), ev(30, [], ['KeyA']), ev(100, ['KeyS'])]))).toEqual(['KeyS']);
+    expect(heldCodesAtEnd(execution([ev(0, ['KeyA'])]))).toEqual(['KeyA']);
+  });
+
+  it('再次按下又松开的不算；没有事件时为空', () => {
+    expect(heldCodesAtEnd(sample)).toEqual([]);
+    expect(heldCodesAtEnd(execution([]))).toEqual([]);
   });
 });

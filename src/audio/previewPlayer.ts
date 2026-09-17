@@ -1,6 +1,6 @@
 import type { InstrumentProfile } from '@/core/model/instrument';
 import type { ExecutionTimeline } from '@/ipc/types';
-import { type LookaheadCursor, planLookahead, previewPositionMs } from './schedule';
+import { type LookaheadCursor, heldCodesAtEnd, planLookahead, previewPositionMs } from './schedule';
 import { type SoundSpec, type SynthVoice, buildSoundMap, playSound } from './synth';
 
 /** 每 25ms 检查一次，把未来 100ms 内的事件排程 */
@@ -139,6 +139,12 @@ export class PreviewPlayer {
     }
 
     if (plan.ended) {
+      // 畸形时间线可能缺少 up 事件，自然结束时释放所有仍在持续的音
+      const releaseAtSec = Math.max(nowMs, session.execution.durationMs) / 1000;
+      for (const code of heldCodesAtEnd(session.execution)) {
+        session.held.get(code)?.release(releaseAtSec);
+        session.held.delete(code);
+      }
       this.endSession(session);
       session.callbacks.onPosition?.(session.execution.durationMs);
       session.callbacks.onEnded?.();

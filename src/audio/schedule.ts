@@ -55,6 +55,19 @@ export function toSourcePositionMs(execution: ExecutionTimeline, positionMs: num
   return execution.sourceStartMs + positionMs * execution.speed;
 }
 
+/**
+ * 不循环的执行时间线走到结尾时仍在持续的键。正常时间线每个 down 都有配对的 up，结果为空；
+ * 畸形时间线缺少 up 事件时，试听播放器用它兜底释放，避免长鸣。
+ */
+export function heldCodesAtEnd(execution: ExecutionTimeline): string[] {
+  const held = new Set<string>();
+  for (const event of execution.events) {
+    for (const code of event.up) held.delete(code);
+    for (const code of event.down) held.add(code);
+  }
+  return [...held];
+}
+
 export interface LookaheadCursor {
   /** 当前一轮在时钟上的起点（毫秒，AudioContext.currentTime × 1000） */
   cycleStartMs: number;
