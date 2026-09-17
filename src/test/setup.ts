@@ -7,6 +7,9 @@ afterEach(() => {
   cleanup();
 });
 
+// 允许在测试里直接使用 react 的 act(...)，否则会打印 act 环境未配置的警告
+(globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
+
 // 以下是 jsdom 没有实现、但 shadcn / Radix 组件会用到的浏览器接口：
 // matchMedia（侧边栏判断窄屏、主题跟随系统）、ResizeObserver（Slider、ScrollArea 测量尺寸）、
 // scrollIntoView 与 Pointer Capture（Select 下拉列表）
