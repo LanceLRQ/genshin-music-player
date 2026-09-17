@@ -7,6 +7,7 @@ pub mod input;
 pub mod instruments;
 pub mod keymap;
 pub mod model;
+pub mod platform;
 pub mod player;
 pub mod timeline;
 
