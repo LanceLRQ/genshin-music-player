@@ -74,7 +74,7 @@ describe('App', () => {
     const user = userEvent.setup();
     render(<App />);
     await user.click(screen.getByRole('button', { name: '乐器' }));
-    expect(screen.getByText('乐器页尚未实现。')).toBeInTheDocument();
+    expect(screen.getByText('虚拟琴键预览（点击试听）')).toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: '设置' }));
     expect(screen.getByText('设置页尚未实现。')).toBeInTheDocument();
     expect(screen.queryByText('乐器页尚未实现。')).not.toBeInTheDocument();
