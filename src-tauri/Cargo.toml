@@ -23,4 +23,5 @@ tauri-plugin-dialog.workspace = true
 tauri-plugin-fs.workspace = true
 
 [dev-dependencies]
+tauri = { workspace = true, features = ["test"] }
 tempfile.workspace = true
