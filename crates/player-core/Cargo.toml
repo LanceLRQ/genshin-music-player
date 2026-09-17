@@ -1,0 +1,18 @@
+[package]
+name = "player-core"
+description = "Genshin Music Player 执行核心：执行时间线、调度、键盘输出与前台检测"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[dependencies]
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+rand.workspace = true
+rand_chacha.workspace = true
+
+[target.'cfg(windows)'.dependencies]
+windows.workspace = true
