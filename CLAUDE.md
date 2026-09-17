@@ -28,8 +28,8 @@
 ## 实现现状
 
 - [x] 调研与设计规格：`docs/superpowers/specs/2026-09-17-genshin-musician-design.md`
-- [ ] 工程脚手架 + TS 核心（乐谱解析、乐器配置、适配、自动推荐）
-- [ ] Rust 执行核心（执行时间线、调度器、Windows 与 Mock 输入后端、验证工具）
+- [x] 工程脚手架 + TS 核心（乐谱解析、乐器配置、适配、自动推荐）
+- [x] Rust 执行核心（执行时间线、调度器、Windows 与 Mock 输入后端、验证工具）
 - [ ] Tauri 应用与界面
 - [ ] 使用文档与测试素材
 - [ ] Windows 真机验证
