@@ -1,0 +1,116 @@
+//! 全局热键：快捷键字符串解析、按下后对应的动作、注册与重新注册（失败时恢复旧热键）。
+//!
+//! 设置里的快捷键字符串（`F9`、`CmdOrCtrl+O`、`Alt+Shift+1`、`Space` 等）可以直接交给
+//! global-hotkey 的 `HotKey::from_str` 解析：修饰键不区分大小写，`CmdOrCtrl` 在 macOS 上是 Cmd、
+//! 其他平台上是 Ctrl，主键接受 `A`–`Z`、`0`–`9`、`F1`–`F12`、`Space`、`Escape`、`Enter`，不需要转换。
+
+use std::str::FromStr;
+
+use tauri::Runtime;
+use tauri_plugin_global_shortcut::{GlobalShortcut, Shortcut, ShortcutState};
+
+use crate::error::AppError;
+use crate::settings::Hotkeys;
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum HotkeyAction {
+    /// 空闲或出错时开始演奏"当前演奏"，演奏中暂停，暂停中继续
+    Toggle,
+    Stop,
+}
+
+/// 注册全局热键的抽象，便于在测试中替换
+pub trait HotkeyRegistrar {
+    fn register(&self, hotkey: &str) -> Result<(), String>;
+    fn unregister(&self, hotkey: &str) -> Result<(), String>;
+    fn is_registered(&self, hotkey: &str) -> bool;
+}
+
+impl<R: Runtime> HotkeyRegistrar for GlobalShortcut<R> {
+    fn register(&self, hotkey: &str) -> Result<(), String> {
+        GlobalShortcut::register(self, hotkey).map_err(|error| error.to_string())
+    }
+
+    fn unregister(&self, hotkey: &str) -> Result<(), String> {
+        GlobalShortcut::unregister(self, hotkey).map_err(|error| error.to_string())
+    }
+
+    fn is_registered(&self, hotkey: &str) -> bool {
+        GlobalShortcut::is_registered(self, hotkey)
+    }
+}
+
+pub fn parse_hotkey(value: &str) -> Result<Shortcut, String> {
+    Shortcut::from_str(value).map_err(|error| error.to_string())
+}
+
+/// 只处理按下；按下的组合键与 toggle / stop 都不相同时返回 None
+pub fn hotkey_action(
+    hotkeys: &Hotkeys,
+    shortcut: &Shortcut,
+    state: ShortcutState,
+) -> Option<HotkeyAction> {
+    if state != ShortcutState::Pressed {
+        return None;
+    }
+    let matches =
+        |value: &str| parse_hotkey(value).is_ok_and(|parsed| parsed.id() == shortcut.id());
+    if matches(&hotkeys.toggle) {
+        Some(HotkeyAction::Toggle)
+    } else if matches(&hotkeys.stop) {
+        Some(HotkeyAction::Stop)
+    } else {
+        None
+    }
+}
+
+fn values(hotkeys: &Hotkeys) -> [&str; 2] {
+    [&hotkeys.toggle, &hotkeys.stop]
+}
+
+/// 依次注册 toggle 和 stop；任何一个失败时注销本次已经注册的，返回 HOTKEY_REGISTER_FAILED
+pub fn register_hotkeys(
+    registrar: &impl HotkeyRegistrar,
+    hotkeys: &Hotkeys,
+) -> Result<(), AppError> {
+    let mut registered = Vec::new();
+    for value in values(hotkeys) {
+        if registrar.register(value).is_err() {
+            for done in registered {
+                let _ = registrar.unregister(done);
+            }
+            return Err(AppError::hotkey_register_failed(value));
+        }
+        registered.push(value);
+    }
+    Ok(())
+}
+
+/// 启动时注册：失败不阻止启动，每个失败的热键返回一条警告（写入 startupWarnings）
+pub fn register_on_startup(registrar: &impl HotkeyRegistrar, hotkeys: &Hotkeys) -> Vec<String> {
+    values(hotkeys)
+        .into_iter()
+        .filter(|value| registrar.register(value).is_err())
+        .map(|value| AppError::hotkey_register_failed(value).message)
+        .collect()
+}
+
+/// 保存设置时：先注销旧热键，再注册新热键；新热键注册失败时恢复原来注册成功的旧热键并返回错误
+pub fn replace_hotkeys(
+    registrar: &impl HotkeyRegistrar,
+    old: &Hotkeys,
+    new: &Hotkeys,
+) -> Result<(), AppError> {
+    let previously_registered: Vec<&str> = values(old)
+        .into_iter()
+        .filter(|value| registrar.is_registered(value))
+        .collect();
+    for value in &previously_registered {
+        let _ = registrar.unregister(value);
+    }
+    register_hotkeys(registrar, new).inspect_err(|_| {
+        for value in &previously_registered {
+            let _ = registrar.register(value);
+        }
+    })
+}
