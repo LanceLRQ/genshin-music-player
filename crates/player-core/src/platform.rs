@@ -100,7 +100,13 @@ pub fn open_accessibility_settings() -> Result<(), CoreError> {
     let status = std::process::Command::new("open")
         .arg("x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility")
         .status()
-        .map_err(|_| CoreError::elevation_failed())?;
+        .map_err(|_| {
+            // 拉起 `open` 失败与退出码非 0 同语义：都是打不开辅助功能面板，与下方保持一致
+            CoreError::new(
+                crate::error::ErrorCode::NotSupported,
+                "无法打开系统设置的辅助功能面板",
+            )
+        })?;
     if status.success() {
         Ok(())
     } else {
