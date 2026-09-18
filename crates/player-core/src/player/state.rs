@@ -56,6 +56,10 @@ pub struct Summary {
     pub lateness_max_ms: f64,
     /// 来自 ExecutionTimeline
     pub dropped: u32,
+    /// 调度停顿（超过 STALL_RESYNC_MS）触发 t0 平移的次数：平移之后的日志 lateness 都接近 0，
+    /// 不记次数就看不出发生过停顿；旧日志没有该字段，serde 默认 0 保持兼容
+    #[serde(default)]
+    pub resync_count: u32,
     pub log_path: Option<String>,
 }
 

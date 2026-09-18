@@ -1,4 +1,4 @@
-use gm_verify::stats::{compare_logs, format_stats, parse_log, record_stats};
+use gm_verify::stats::{compare_logs, format_stats, parse_log, parse_summary, record_stats};
 use player_core::exec_log::{LatenessStats, LogRecord};
 
 fn record(target_ms: f64, actual_ms: f64, up: &[&str], down: &[&str]) -> LogRecord {
@@ -39,6 +39,25 @@ fn parse_log_reports_line_number_of_bad_line() {
 }
 
 #[test]
+fn parse_summary_reads_trailing_summary_line() {
+    let summary = parse_summary(LOG).unwrap().expect("LOG 末尾是汇总行");
+    assert_eq!(summary.events_sent, 3);
+    // 旧格式汇总没有 resyncCount，反序列化默认 0
+    assert_eq!(summary.resync_count, 0);
+}
+
+#[test]
+fn parse_summary_reads_resync_count_or_none_without_summary() {
+    let text = r#"{"targetMs":0.0,"actualMs":0.0,"up":[],"down":["KeyA"]}
+{"summary":{"completed":true,"eventsSent":1,"latenessP50Ms":0.0,"latenessP95Ms":0.0,"latenessMaxMs":0.0,"dropped":0,"resyncCount":2,"logPath":null}}
+"#;
+    let summary = parse_summary(text).unwrap().expect("有汇总行");
+    assert_eq!(summary.resync_count, 2);
+    // 日志被截断、没有汇总行时返回 None，stats 不输出停顿平移一行
+    assert_eq!(parse_summary("{\"loop\":1}\n").unwrap(), None);
+}
+
+#[test]
 fn stats_use_nearest_rank_percentiles() {
     let records = parse_log(LOG).unwrap();
     assert_eq!(
@@ -50,8 +69,13 @@ fn stats_use_nearest_rank_percentiles() {
         }
     );
     assert_eq!(
-        format_stats(&records),
+        format_stats(&records, None),
         "事件数：3\n延迟 p50：1.00ms · p95：2.00ms · 最大：2.00ms"
+    );
+    let summary = parse_summary(LOG).unwrap().unwrap();
+    assert_eq!(
+        format_stats(&records, Some(&summary)),
+        "事件数：3\n延迟 p50：1.00ms · p95：2.00ms · 最大：2.00ms\n停顿平移：0 次"
     );
 }
 

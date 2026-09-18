@@ -147,11 +147,12 @@ pub fn describe_summary(summary: &Summary) -> String {
     };
     let log = summary.log_path.as_deref().unwrap_or("未写入");
     format!(
-        "{outcome}：发送 {} 个事件，延迟 p50 {:.2}ms · p95 {:.2}ms · 最大 {:.2}ms，过密丢弃 {} 个\n执行日志：{log}",
+        "{outcome}：发送 {} 个事件，延迟 p50 {:.2}ms · p95 {:.2}ms · 最大 {:.2}ms，过密丢弃 {} 个，停顿平移 {} 次\n执行日志：{log}",
         summary.events_sent,
         summary.lateness_p50_ms,
         summary.lateness_p95_ms,
         summary.lateness_max_ms,
-        summary.dropped
+        summary.dropped,
+        summary.resync_count
     )
 }

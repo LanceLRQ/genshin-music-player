@@ -11,7 +11,7 @@ use std::time::Duration;
 use clap::Parser;
 use gm_verify::cli::{Cli, CliCommand, RunArgs, describe_state, describe_summary, pattern_options};
 use gm_verify::patterns::{generate, load_instrument};
-use gm_verify::stats::{compare_logs, format_stats, parse_log};
+use gm_verify::stats::{compare_logs, format_stats, parse_log, parse_summary};
 use player_core::exec_log::LogRecord;
 use player_core::guard::{AlwaysForeground, WindowProbe};
 use player_core::input::{InputBackend, KeyboardOutput};
@@ -67,16 +67,16 @@ fn run(cli: Cli) -> Result<ExitCode, String> {
             }
         }
         CliCommand::Stats { log, compare } => {
-            let records = read_log(&log)?;
-            println!("{}", format_stats(&records));
+            let (records, summary) = read_log(&log)?;
+            println!("{}", format_stats(&records, summary.as_ref()));
             let Some(other) = compare else {
                 return Ok(ExitCode::SUCCESS);
             };
-            let other_records = read_log(&other)?;
+            let (other_records, other_summary) = read_log(&other)?;
             println!(
                 "对比日志 {}：\n{}",
                 other.display(),
-                format_stats(&other_records)
+                format_stats(&other_records, other_summary.as_ref())
             );
             let comparison = compare_logs(&records, &other_records);
             if comparison.is_match() {
@@ -96,10 +96,13 @@ fn run(cli: Cli) -> Result<ExitCode, String> {
     }
 }
 
-fn read_log(path: &Path) -> Result<Vec<LogRecord>, String> {
+/// 解析日志：发送记录用于计时统计，汇总行带出停顿平移次数（旧日志没有汇总行时为 None）
+fn read_log(path: &Path) -> Result<(Vec<LogRecord>, Option<Summary>), String> {
     let text = fs::read_to_string(path)
         .map_err(|error| format!("无法读取日志 {}：{error}", path.display()))?;
-    parse_log(&text)
+    let summary = parse_summary(&text)?;
+    let records = parse_log(&text)?;
+    Ok((records, summary))
 }
 
 struct ConsoleSink {

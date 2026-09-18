@@ -186,10 +186,11 @@ fn console_messages_are_chinese() {
         lateness_p95_ms: 1.9,
         lateness_max_ms: 4.25,
         dropped: 1,
+        resync_count: 0,
         log_path: None,
     };
     assert_eq!(
         describe_summary(&summary),
-        "播放完成：发送 42 个事件，延迟 p50 0.80ms · p95 1.90ms · 最大 4.25ms，过密丢弃 1 个\n执行日志：未写入"
+        "播放完成：发送 42 个事件，延迟 p50 0.80ms · p95 1.90ms · 最大 4.25ms，过密丢弃 1 个，停顿平移 0 次\n执行日志：未写入"
     );
 }

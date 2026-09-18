@@ -87,6 +87,8 @@ pub struct ExecLog {
     lateness_ms: Vec<f64>,
     events_sent: u32,
     loops: u32,
+    /// 停顿平移（超过 STALL_RESYNC_MS）次数，随 Summary 的 resyncCount 输出
+    resyncs: u32,
 }
 
 impl ExecLog {
@@ -115,6 +117,11 @@ impl ExecLog {
         self.lines.push(LogLine::Loop { round: self.loops });
     }
 
+    /// 调度线程长时间停顿触发 t0 平移（见 player::core 的 STALL_RESYNC_MS）时计数
+    pub fn mark_resync(&mut self) {
+        self.resyncs += 1;
+    }
+
     pub fn events_sent(&self) -> u32 {
         self.events_sent
     }
@@ -138,6 +145,7 @@ impl ExecLog {
             lateness_p95_ms: stats.p95_ms,
             lateness_max_ms: stats.max_ms,
             dropped,
+            resync_count: self.resyncs,
             log_path: None,
         };
         if let Some(dir) = log_dir {

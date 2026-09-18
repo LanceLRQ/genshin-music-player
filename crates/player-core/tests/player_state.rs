@@ -58,6 +58,7 @@ fn progress_and_summary_use_camel_case() {
             lateness_p95_ms: 1.5,
             lateness_max_ms: 3.0,
             dropped: 1,
+            resync_count: 2,
             log_path: None,
         })
         .unwrap(),
@@ -68,7 +69,24 @@ fn progress_and_summary_use_camel_case() {
             "latenessP95Ms": 1.5,
             "latenessMaxMs": 3.0,
             "dropped": 1,
+            "resyncCount": 2,
             "logPath": null
         })
     );
+}
+
+#[test]
+fn summary_without_resync_count_defaults_to_zero() {
+    // 旧版本写出的日志没有 resyncCount 字段，反序列化必须默认 0 而不是报错
+    let summary: Summary = serde_json::from_value(json!({
+        "completed": false,
+        "eventsSent": 3,
+        "latenessP50Ms": 1.0,
+        "latenessP95Ms": 2.0,
+        "latenessMaxMs": 2.0,
+        "dropped": 0,
+        "logPath": null
+    }))
+    .unwrap();
+    assert_eq!(summary.resync_count, 0);
 }

@@ -16,6 +16,7 @@ const summary: Summary = {
   latenessP95Ms: 1.5,
   latenessMaxMs: 3,
   dropped: 0,
+  resyncCount: 0,
   logPath: null,
 };
 

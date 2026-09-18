@@ -80,6 +80,22 @@ fn finish_without_log_dir_only_builds_summary() {
 }
 
 #[test]
+fn resync_count_is_counted_and_reset() {
+    let mut log = ExecLog::new();
+    log.record(0.0, 0.0, &[], &codes(&["KeyA"]));
+    log.mark_resync();
+    log.mark_resync();
+    let summary = log.finish(true, 0, None);
+    assert_eq!(summary.resync_count, 2);
+    log.reset();
+    assert_eq!(
+        log.finish(true, 0, None).resync_count,
+        0,
+        "reset 后归零，次数按一次演奏统计"
+    );
+}
+
+#[test]
 fn finish_writes_jsonl_with_summary_last() {
     let dir = temp_dir("jsonl");
     let mut log = ExecLog::new();

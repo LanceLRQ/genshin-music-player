@@ -14,6 +14,7 @@ const summary: Summary = {
   latenessP95Ms: 3.24,
   latenessMaxMs: 11,
   dropped: 2,
+  resyncCount: 0,
   logPath: '/data/logs/exec-1789.jsonl',
 };
 

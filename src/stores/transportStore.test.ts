@@ -26,6 +26,7 @@ const summary: Summary = {
   latenessP95Ms: 2.1,
   latenessMaxMs: 9,
   dropped: 1,
+  resyncCount: 0,
   logPath: '/data/logs/exec-1.jsonl',
 };
 const timeline: KeyTimeline = {

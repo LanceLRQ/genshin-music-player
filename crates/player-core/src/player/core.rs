@@ -307,11 +307,13 @@ impl<B: InputBackend, P: WindowProbe, S: PlayerSink> PlayerCore<B, P, S> {
         let mut cursor = cursor_before;
 
         // 长时间停顿后不补发积压：把 t0 平移到"最早到期的事件恰好此刻到期"，
-        // 之后的事件保持原有间隔；进度和 positionMs 随 t0 平移保持连续
+        // 之后的事件保持原有间隔；进度和 positionMs 随 t0 平移保持连续。
+        // 平移后的日志 lateness 都接近 0，计数进 Summary 才能看出发生过停顿
         if let Some(event) = events.get(cursor) {
             let lateness_us = now_us - (t0_us + ms_to_micros(event.t_ms));
             if lateness_us > ms_to_micros(STALL_RESYNC_MS) {
                 t0_us += lateness_us;
+                self.log.mark_resync();
                 if let Some(session) = self.session.as_mut() {
                     session.t0_us = t0_us;
                 }
@@ -359,6 +361,7 @@ impl<B: InputBackend, P: WindowProbe, S: PlayerSink> PlayerCore<B, P, S> {
             }
             // 循环：尾部休止结束后开始下一轮，t0 按周期累加，不受本轮延迟影响；
             // 停顿跨过多个周期时直接对齐到当前周期，只开始一轮，不连播积压的轮次
+            // （该对齐属循环轮次语义，已有 { "loop": n } 标记，不计入 resync_count）
             if now_us >= round_end_us {
                 let period_us = loop_period_us(&execution);
                 let next_t0_us = round_end_us + (now_us - round_end_us) / period_us * period_us;

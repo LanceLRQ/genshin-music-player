@@ -1,6 +1,7 @@
 //! 执行日志统计与逐条比对。
 
 use player_core::exec_log::{LatenessStats, LogLine, LogRecord, lateness_stats};
+use player_core::player::state::Summary;
 
 /// 两份日志的 targetMs 最多相差多少毫秒仍算一致
 pub const TARGET_TOLERANCE_MS: f64 = 0.5;
@@ -23,6 +24,23 @@ pub fn parse_log(text: &str) -> Result<Vec<LogRecord>, String> {
     Ok(records)
 }
 
+/// 取日志末尾的汇总行 `{ "summary": {...} }`；没有汇总行（日志被截断或旧格式）时返回 None。
+/// 与 parse_log 分开：发送记录的统计不需要汇总行，停顿平移次数只记录在汇总里
+pub fn parse_summary(text: &str) -> Result<Option<Summary>, String> {
+    for line in text.lines().rev() {
+        if line.trim().is_empty() {
+            continue;
+        }
+        let parsed: LogLine = serde_json::from_str(line)
+            .map_err(|error| format!("最后一行不是有效的执行日志：{error}"))?;
+        return Ok(match parsed {
+            LogLine::Summary { summary } => Some(summary),
+            _ => None,
+        });
+    }
+    Ok(None)
+}
+
 pub fn record_stats(records: &[LogRecord]) -> LatenessStats {
     let lateness: Vec<f64> = records
         .iter()
@@ -31,15 +49,20 @@ pub fn record_stats(records: &[LogRecord]) -> LatenessStats {
     lateness_stats(&lateness)
 }
 
-pub fn format_stats(records: &[LogRecord]) -> String {
+/// 汇总行缺失（日志被截断）时不输出停顿平移一行
+pub fn format_stats(records: &[LogRecord], summary: Option<&Summary>) -> String {
     let stats = record_stats(records);
-    format!(
+    let mut text = format!(
         "事件数：{}\n延迟 p50：{:.2}ms · p95：{:.2}ms · 最大：{:.2}ms",
         records.len(),
         stats.p50_ms,
         stats.p95_ms,
         stats.max_ms
-    )
+    );
+    if let Some(summary) = summary {
+        text.push_str(&format!("\n停顿平移：{} 次", summary.resync_count));
+    }
+    text
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]

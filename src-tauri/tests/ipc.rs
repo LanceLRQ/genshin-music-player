@@ -233,6 +233,7 @@ fn tauri_sink_emits_player_events() {
         lateness_p95_ms: 1.0,
         lateness_max_ms: 1.0,
         dropped: 0,
+        resync_count: 0,
         log_path: None,
     });
 
@@ -257,6 +258,7 @@ fn tauri_sink_emits_player_events() {
                     "latenessP95Ms": 1.0,
                     "latenessMaxMs": 1.0,
                     "dropped": 0,
+                    "resyncCount": 0,
                     "logPath": null
                 })
             ),

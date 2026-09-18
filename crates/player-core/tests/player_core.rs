@@ -325,6 +325,7 @@ fn last_event_without_loop_reports_summary_and_returns_to_idle() {
     assert!(summaries[0].completed);
     assert_eq!(summaries[0].events_sent, 2);
     assert_eq!(summaries[0].lateness_max_ms, 1.0);
+    assert_eq!(summaries[0].resync_count, 0, "正常播放没有停顿平移");
     assert_eq!(
         h.sink.states(),
         vec![PlayerState::Playing, PlayerState::Idle]
@@ -893,6 +894,10 @@ fn stall_longer_than_threshold_shifts_t0_instead_of_bursting() {
         summary.lateness_max_ms, 0.0,
         "执行日志记录平移后的 target / actual"
     );
+    assert!(
+        summary.resync_count >= 1,
+        "停顿平移要计入 resync_count，否则日志看不出发生过停顿"
+    );
 }
 
 #[test]
@@ -910,6 +915,12 @@ fn lateness_within_threshold_still_catches_up_due_events() {
             sent(&["KeyS"], &[]),
         ],
         "延迟恰好 500ms 不算停顿，照常补发到期事件"
+    );
+    h.core.handle(Command::Stop, ms(600)).unwrap();
+    let summary = h.sink.summaries().pop().unwrap();
+    assert_eq!(
+        summary.resync_count, 0,
+        "未超过阈值不触发平移，resync_count 保持 0"
     );
 }
 
@@ -947,6 +958,10 @@ fn loop_stall_over_multiple_periods_starts_only_one_round() {
 
     h.core.handle(Command::Stop, ms(1310)).unwrap();
     let summary = h.sink.summaries().pop().unwrap();
+    assert_eq!(
+        summary.resync_count, 0,
+        "循环跨周期对齐属循环轮次语义，不计入 resync_count"
+    );
     let text = fs::read_to_string(summary.log_path.unwrap()).unwrap();
     let loop_lines: Vec<&str> = text
         .lines()

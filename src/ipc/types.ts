@@ -71,6 +71,8 @@ export interface Summary {
   latenessP95Ms: number;
   latenessMaxMs: number;
   dropped: number;
+  /** 调度停顿（超过 500ms）平移时间原点的次数：平移后的日志 lateness 都接近 0，靠它判断发生过停顿 */
+  resyncCount: number;
   logPath: string | null;
 }
 
