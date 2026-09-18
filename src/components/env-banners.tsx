@@ -18,7 +18,8 @@ export function EnvBanners() {
   const [opening, setOpening] = useState(false);
 
   const showNotElevated = env?.platform === 'windows' && env.elevated === false;
-  const showNotTrusted = env?.platform === 'macos' && env.trusted === false;
+  // 只对真实 macOS 后端提示：mock 后端（gm-verify 演示场景）不做 CGEvent 发键，避免同时挂两条横幅
+  const showNotTrusted = env?.platform === 'macos' && env.backend === 'macos' && env.trusted === false;
   const showMock = env?.backend === 'mock';
   const warnings = env && !warningsDismissed ? env.startupWarnings : [];
   if (!error && !showNotElevated && !showNotTrusted && !showMock && warnings.length === 0) return null;
