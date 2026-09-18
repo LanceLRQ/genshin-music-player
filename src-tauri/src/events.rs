@@ -6,6 +6,8 @@ use tauri::{AppHandle, Emitter, Runtime};
 pub const STATE_EVENT: &str = "player://state";
 pub const PROGRESS_EVENT: &str = "player://progress";
 pub const SUMMARY_EVENT: &str = "player://summary";
+/// 模拟发声模式下全局热键的转发通道：后端不再驱动播放器，改由前端控制试听
+pub const HOTKEY_EVENT: &str = "hotkey://action";
 
 /// 回调运行在播放线程上，播放线程要等回调返回才继续处理命令或推进时间线。因此这里只做 `emit`：
 /// - **不能**调用 `Player::send`：那是在等播放线程处理完命令，而播放线程正在执行这个回调；

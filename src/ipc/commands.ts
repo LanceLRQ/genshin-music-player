@@ -42,6 +42,11 @@ export function getEnv(): Promise<EnvInfo> {
   return call('get_env');
 }
 
+/** macOS：打开系统设置的辅助功能面板；其他平台返回 NOT_SUPPORTED */
+export function openAccessibilitySettings(): Promise<void> {
+  return call('open_accessibility_settings');
+}
+
 /** 成功后应用会立即退出 */
 export function restartAsAdmin(): Promise<void> {
   return call('restart_as_admin');

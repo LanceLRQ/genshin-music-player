@@ -33,5 +33,7 @@ docs/_internal/
 
 # --- Claude Code / AI 编辑器相关（不入库）---
 .claude/
+.codegraph/
+.cursor/
 CLAUDE.local.md
 AGENTS.md

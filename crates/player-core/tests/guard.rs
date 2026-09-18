@@ -40,6 +40,26 @@ fn mock_probe_defaults_to_foreground_and_shares_state() {
     assert!(!probe.is_target_foreground());
 }
 
+/// 真机冒烟：CGWindowList 能拿到最前面的普通层窗口，应用名非空且与规则匹配后返回 true
+#[cfg(target_os = "macos")]
+#[test]
+fn mac_probe_queries_the_real_frontmost_window_without_panicking() {
+    use std::sync::{Arc, RwLock};
+
+    use player_core::guard::macos::{MacProbe, frontmost_window_info};
+
+    let probe = MacProbe::new(Arc::new(RwLock::new(WindowRule::default())));
+    let _ = probe.is_target_foreground();
+
+    let (owner, _title) = frontmost_window_info().expect("桌面上应存在最前面的普通层窗口");
+    let owner = owner.expect("前台窗口应带有应用名");
+    let probe = MacProbe::new(Arc::new(RwLock::new(WindowRule {
+        class_name: String::new(),
+        titles: vec![owner],
+    })));
+    assert!(probe.is_target_foreground(), "前台应用名应能被规则匹配");
+}
+
 #[test]
 fn boxed_probe_and_always_foreground() {
     let boxed: Box<dyn WindowProbe> = Box::new(AlwaysForeground);

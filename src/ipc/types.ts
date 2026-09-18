@@ -75,13 +75,15 @@ export interface Summary {
 }
 
 export type Platform = 'windows' | 'macos' | 'linux';
-export type BackendKind = 'windows' | 'mock';
+export type BackendKind = 'windows' | 'macos' | 'mock';
 
 export interface EnvInfo {
   platform: Platform;
   backend: BackendKind;
   /** 只有 Windows 上有值 */
   elevated: boolean | null;
+  /** 只有 macOS 上有值：是否已授予辅助功能权限（CGEvent 发键的前提） */
+  trusted: boolean | null;
   appVersion: string;
   dataDir: string;
   logsDir: string;
@@ -121,6 +123,8 @@ export interface Settings {
   /** 0..30 */
   defaultHumanizeMs: number;
   writeExecutionLog: boolean;
+  /** 模拟发声：开启后"演奏"不向游戏发键，改由本窗口的合成音色播放 */
+  simulateSound: boolean;
 }
 
 /** 与 Rust 端 Settings::default() 一致 */
@@ -131,6 +135,7 @@ export const DEFAULT_SETTINGS: Settings = {
   targetWindow: { className: 'UnityWndClass', titles: ['原神', 'Genshin Impact'] },
   defaultHumanizeMs: 0,
   writeExecutionLog: true,
+  simulateSound: false,
 };
 
 export const BACKEND_ERROR_CODES = [

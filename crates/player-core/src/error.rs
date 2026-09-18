@@ -76,6 +76,21 @@ impl CoreError {
         )
     }
 
+    /// macOS：未授予辅助功能权限时 CGEventPost 会被静默丢弃，这里显式报错
+    pub fn input_access_denied() -> Self {
+        Self::new(
+            ErrorCode::InputSendFailed,
+            "未授予辅助功能权限，无法发送按键（系统设置 → 隐私与安全性 → 辅助功能）",
+        )
+    }
+
+    pub fn input_backend_failed(reason: &str) -> Self {
+        Self::new(
+            ErrorCode::InputSendFailed,
+            format!("按键发送失败（{reason}）"),
+        )
+    }
+
     pub fn player_panic() -> Self {
         Self::new(ErrorCode::PlayerPanic, "播放线程异常退出，已松开所有按键")
     }

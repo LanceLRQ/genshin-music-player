@@ -7,6 +7,7 @@ const env: EnvInfo = {
   platform: 'windows',
   backend: 'windows',
   elevated: false,
+  trusted: null,
   appVersion: '0.1.0',
   dataDir: 'C:\\data',
   logsDir: 'C:\\data\\logs',

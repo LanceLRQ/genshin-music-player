@@ -26,6 +26,12 @@ pub fn get_env<R: Runtime>(app: AppHandle<R>, state: State<'_, AppState>) -> Env
     )
 }
 
+/// macOS：打开系统设置的辅助功能面板（CGEvent 发键需要该权限）。其他平台返回 NOT_SUPPORTED。
+#[tauri::command]
+pub fn open_accessibility_settings() -> Result<(), AppError> {
+    platform::open_accessibility_settings().map_err(AppError::from)
+}
+
 /// 提权前先注销当前热键，避免新旧进程同时占着 F9 / F10 导致新进程 setup 时注册失败：
 /// 提权失败时尽力恢复热键（`with_hotkeys_released`）后把错误返回给前端；
 /// 提权成功时热键保持注销（新进程的 setup 会重新注册），先停止演奏（松开所有按键），再退出当前进程。
@@ -107,10 +113,11 @@ pub fn get_player_state(state: State<'_, AppState>) -> PlayerState {
     state.player_state()
 }
 
-/// 全部 13 个命令；应用和测试（MockRuntime）共用
+/// 全部 14 个命令；应用和测试（MockRuntime）共用
 pub fn invoke_handler<R: Runtime>() -> impl Fn(Invoke<R>) -> bool + Send + Sync + 'static {
     tauri::generate_handler![
         get_env,
+        open_accessibility_settings,
         restart_as_admin,
         list_custom_instruments,
         save_custom_instrument,

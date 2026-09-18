@@ -1,23 +1,27 @@
-import { Info, ShieldAlert, TriangleAlert, Unplug, X } from 'lucide-react';
+import { Info, ShieldAlert, SquareArrowOutUpRight, TriangleAlert, Unplug, X } from 'lucide-react';
 import { useState } from 'react';
+import { toast } from 'sonner';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
-import { restartAsAdmin } from '@/ipc/commands';
+import { openAccessibilitySettings, restartAsAdmin } from '@/ipc/commands';
 import { notifyError } from '@/lib/notify';
 import { useEnvStore } from '@/stores/envStore';
 
-/** 顶部横幅：无法连接后端、Windows 未提权、模拟模式、启动警告，按需出现、纵向堆叠 */
+/** 顶部横幅：无法连接后端、Windows 未提权、macOS 未授权辅助功能、模拟模式、启动警告，按需出现、纵向堆叠 */
 export function EnvBanners() {
   const env = useEnvStore((state) => state.env);
   const error = useEnvStore((state) => state.error);
   const warningsDismissed = useEnvStore((state) => state.warningsDismissed);
   const dismissWarnings = useEnvStore((state) => state.dismissWarnings);
+  const reloadEnv = useEnvStore((state) => state.load);
   const [restarting, setRestarting] = useState(false);
+  const [opening, setOpening] = useState(false);
 
   const showNotElevated = env?.platform === 'windows' && env.elevated === false;
+  const showNotTrusted = env?.platform === 'macos' && env.trusted === false;
   const showMock = env?.backend === 'mock';
   const warnings = env && !warningsDismissed ? env.startupWarnings : [];
-  if (!error && !showNotElevated && !showMock && warnings.length === 0) return null;
+  if (!error && !showNotElevated && !showNotTrusted && !showMock && warnings.length === 0) return null;
 
   const restart = async () => {
     setRestarting(true);
@@ -27,6 +31,18 @@ export function EnvBanners() {
       notifyError(restartError, '以管理员身份重启失败');
     } finally {
       setRestarting(false);
+    }
+  };
+
+  const openSettings = async () => {
+    setOpening(true);
+    try {
+      await openAccessibilitySettings();
+      toast.info('已在系统设置中打开辅助功能面板，勾选本应用后点击「重新检测」');
+    } catch (openError) {
+      notifyError(openError, '无法打开系统设置');
+    } finally {
+      setOpening(false);
     }
   };
 
@@ -47,6 +63,24 @@ export function EnvBanners() {
             <Button size="sm" variant="outline" disabled={restarting} onClick={() => void restart()}>
               以管理员身份重启
             </Button>
+          </AlertDescription>
+        </Alert>
+      )}
+      {showNotTrusted && (
+        <Alert variant="destructive">
+          <ShieldAlert />
+          <AlertTitle>未授予辅助功能权限，游戏将收不到按键。</AlertTitle>
+          <AlertDescription>
+            在系统设置 → 隐私与安全性 → 辅助功能中勾选本应用。也可以在设置页开启「模拟发声」，只在本窗口播放不出键。
+            <div className="mt-2 flex flex-wrap gap-2">
+              <Button size="sm" variant="outline" disabled={opening} onClick={() => void openSettings()}>
+                <SquareArrowOutUpRight className="size-4" />
+                去系统设置授权
+              </Button>
+              <Button size="sm" variant="ghost" onClick={() => void reloadEnv()}>
+                重新检测
+              </Button>
+            </div>
           </AlertDescription>
         </Alert>
       )}

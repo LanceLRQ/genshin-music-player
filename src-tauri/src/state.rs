@@ -7,6 +7,7 @@ use std::sync::{Arc, Mutex, PoisonError, RwLock};
 
 use player_core::guard::WindowRule;
 use player_core::model::{ExecutionParams, ExecutionTimeline, KeyTimeline};
+use player_core::platform;
 use player_core::player::{Command, Player, PlayerConfig, PlayerState};
 use player_core::timeline::build_execution;
 use serde::Serialize;
@@ -23,10 +24,12 @@ use crate::storage::{self, AppPaths, CustomInstrumentList};
 pub struct EnvInfo {
     /// `windows` / `macos` / `linux`
     pub platform: &'static str,
-    /// `windows` / `mock`
+    /// `windows` / `macos` / `mock`
     pub backend: &'static str,
     /// 只有 Windows 上有值
     pub elevated: Option<bool>,
+    /// 只有 macOS 上有值：是否已授予辅助功能权限（CGEvent 发键的前提）
+    pub trusted: Option<bool>,
     pub app_version: String,
     pub data_dir: String,
     pub logs_dir: String,
@@ -94,6 +97,7 @@ impl AppState {
             platform: current_platform(),
             backend: self.backend,
             elevated,
+            trusted: platform::is_trusted(),
             app_version: app_version.to_string(),
             data_dir: self.paths.data_dir.to_string_lossy().into_owned(),
             logs_dir: self.paths.logs_dir.to_string_lossy().into_owned(),

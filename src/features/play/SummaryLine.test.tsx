@@ -21,6 +21,7 @@ const mockEnv: EnvInfo = {
   platform: 'macos',
   backend: 'mock',
   elevated: null,
+  trusted: null,
   appVersion: '0.1.0',
   dataDir: '/data',
   logsDir: '/data/logs',

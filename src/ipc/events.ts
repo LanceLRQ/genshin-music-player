@@ -8,6 +8,12 @@ export const PLAYER_EVENTS = {
   summary: 'player://summary',
 } as const;
 
+/** 模拟发声模式下全局热键的转发通道（后端只发事件，不驱动播放器） */
+export const HOTKEY_EVENT = 'hotkey://action';
+
+/** 热键动作：toggle = 开始/停止试听，stop = 停止 */
+export type HotkeyAction = 'toggle' | 'stop';
+
 export type Unlisten = () => void;
 
 async function subscribe<T>(event: string, handler: (payload: T) => void): Promise<Unlisten> {
@@ -41,4 +47,9 @@ export function onPlayerProgress(handler: (progress: Progress) => void): Promise
 /** 自然播完或停止时（发送过按键才会触发） */
 export function onPlayerSummary(handler: (summary: Summary) => void): Promise<Unlisten> {
   return subscribe(PLAYER_EVENTS.summary, handler);
+}
+
+/** 模拟发声模式下的全局热键动作 */
+export function onHotkeyAction(handler: (action: HotkeyAction) => void): Promise<Unlisten> {
+  return subscribe<HotkeyAction>(HOTKEY_EVENT, handler);
 }

@@ -72,6 +72,50 @@ pub fn is_elevated() -> Option<bool> {
     None
 }
 
+/// macOS 的辅助功能（Accessibility）授权声明；Boolean 是 unsigned char
+#[cfg(target_os = "macos")]
+mod ax {
+    #[link(name = "ApplicationServices", kind = "framework")]
+    unsafe extern "C" {
+        pub fn AXIsProcessTrusted() -> u8;
+    }
+}
+
+/// 是否已授予辅助功能权限（只有 macOS 上有值）。CGEventPost 没有它会被系统静默丢弃。
+#[cfg(target_os = "macos")]
+pub fn is_trusted() -> Option<bool> {
+    // SAFETY: 无指针参数
+    Some(unsafe { ax::AXIsProcessTrusted() != 0 })
+}
+
+#[cfg(not(target_os = "macos"))]
+pub fn is_trusted() -> Option<bool> {
+    None
+}
+
+/// 打开系统设置的辅助功能面板（不弹 TCC 授权对话框，方便测试与按需触发）。
+/// 返回是否成功拉起 `open`；非 macOS 平台返回 NOT_SUPPORTED。
+#[cfg(target_os = "macos")]
+pub fn open_accessibility_settings() -> Result<(), CoreError> {
+    let status = std::process::Command::new("open")
+        .arg("x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility")
+        .status()
+        .map_err(|_| CoreError::elevation_failed())?;
+    if status.success() {
+        Ok(())
+    } else {
+        Err(CoreError::new(
+            crate::error::ErrorCode::NotSupported,
+            "无法打开系统设置的辅助功能面板",
+        ))
+    }
+}
+
+#[cfg(not(target_os = "macos"))]
+pub fn open_accessibility_settings() -> Result<(), CoreError> {
+    Err(CoreError::not_supported())
+}
+
 /// 以管理员身份重新启动当前程序（带原参数）。成功后由调用方退出当前进程。
 /// ShellExecute 可能委托给通过 COM 激活的 Shell 扩展，调用前先在当前线程初始化 COM。
 #[cfg(windows)]

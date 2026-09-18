@@ -11,6 +11,7 @@ function setPlatform(platform: Platform) {
     platform,
     backend: platform === 'windows' ? 'windows' : 'mock',
     elevated: platform === 'windows' ? true : null,
+    trusted: null,
     appVersion: '0.1.0',
     dataDir: '/data',
     logsDir: '/data/logs',

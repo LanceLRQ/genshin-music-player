@@ -30,6 +30,11 @@ fn env_info_serializes_platform_backend_and_paths() {
             "platform": current_platform(),
             "backend": "mock",
             "elevated": null,
+            "trusted": if cfg!(target_os = "macos") {
+                json!(player_core::platform::is_trusted())
+            } else {
+                json!(null)
+            },
             "appVersion": "0.1.0",
             "dataDir": app.temp.path().to_string_lossy(),
             "logsDir": app.temp.path().join("logs").to_string_lossy(),

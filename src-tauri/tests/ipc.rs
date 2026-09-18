@@ -197,7 +197,8 @@ fn custom_instrument_and_settings_commands() {
             "elevated",
             "logsDir",
             "platform",
-            "startupWarnings"
+            "startupWarnings",
+            "trusted"
         ]
     );
 }

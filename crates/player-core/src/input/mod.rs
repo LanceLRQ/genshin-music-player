@@ -6,6 +6,8 @@ use crate::error::CoreError;
 use crate::keymap::{KeyInfo, resolve_key};
 
 pub mod mock;
+#[cfg(target_os = "macos")]
+pub mod macos;
 #[cfg(windows)]
 pub mod windows;
 

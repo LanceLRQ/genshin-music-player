@@ -13,10 +13,10 @@ use std::sync::{Arc, RwLock};
 
 use player_core::guard::WindowRule;
 use player_core::player::{Player, PlayerConfig, PlayerSink};
-use tauri::{AppHandle, Manager, RunEvent, Runtime};
+use tauri::{AppHandle, Emitter, Manager, RunEvent, Runtime};
 use tauri_plugin_global_shortcut::{GlobalShortcutExt, Shortcut, ShortcutEvent};
 
-use crate::events::TauriSink;
+use crate::events::{HOTKEY_EVENT, TauriSink};
 use crate::hotkeys::{hotkey_action, register_on_startup};
 use crate::settings::load_settings;
 use crate::state::{AppState, player_config};
@@ -80,14 +80,19 @@ fn setup<R: Runtime>(app: &AppHandle<R>) -> Result<(), Box<dyn std::error::Error
 }
 
 /// 热键回调在主线程上运行；AppState 还没创建（启动过程中）时忽略。
+/// 模拟发声模式下后端不驱动播放器（那会向游戏发键），把动作转发给前端去控制试听。
 /// 命令的结果通过 player:// 事件反映到界面上，这里不再单独处理错误。
 fn on_hotkey<R: Runtime>(app: &AppHandle<R>, shortcut: &Shortcut, event: ShortcutEvent) {
     let Some(state) = app.try_state::<AppState>() else {
         return;
     };
-    let hotkeys = state.settings().hotkeys;
-    if let Some(action) = hotkey_action(&hotkeys, shortcut, event.state) {
-        let _ = state.handle_hotkey(action);
+    let settings = state.settings();
+    if let Some(action) = hotkey_action(&settings.hotkeys, shortcut, event.state) {
+        if settings.simulate_sound {
+            let _ = app.emit(HOTKEY_EVENT, action);
+        } else {
+            let _ = state.handle_hotkey(action);
+        }
     }
 }
 
@@ -108,8 +113,25 @@ fn spawn_player<S: PlayerSink + 'static>(
     Ok((player, backend))
 }
 
+/// macOS 上用 CGEvent 后端（需要辅助功能权限，见 platform::is_trusted）和前台窗口检测
+#[cfg(target_os = "macos")]
+fn spawn_player<S: PlayerSink + 'static>(
+    sink: S,
+    window_rule: Arc<RwLock<WindowRule>>,
+    config: PlayerConfig,
+) -> io::Result<(Player, &'static str)> {
+    use player_core::guard::macos::MacProbe;
+    use player_core::input::KeyboardOutput;
+    use player_core::input::macos::MacBackend;
+
+    let output = KeyboardOutput::new(MacBackend::new());
+    let backend = output.backend_name();
+    let player = Player::spawn(output, MacProbe::new(window_rule), sink, config)?;
+    Ok((player, backend))
+}
+
 /// 其他平台用 Mock 后端（只记录，不发键），前台检测始终认为目标在前台
-#[cfg(not(windows))]
+#[cfg(not(any(windows, target_os = "macos")))]
 fn spawn_player<S: PlayerSink + 'static>(
     sink: S,
     _window_rule: Arc<RwLock<WindowRule>>,

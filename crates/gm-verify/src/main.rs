@@ -200,9 +200,14 @@ fn platform_backend() -> player_core::input::windows::WindowsBackend {
     player_core::input::windows::WindowsBackend
 }
 
-#[cfg(not(windows))]
+#[cfg(target_os = "macos")]
+fn platform_backend() -> player_core::input::macos::MacBackend {
+    player_core::input::macos::MacBackend::new()
+}
+
+#[cfg(not(any(windows, target_os = "macos")))]
 fn platform_backend() -> player_core::input::mock::MockBackend {
-    println!("当前平台不是 Windows，使用 Mock 后端（不会真实发键）");
+    println!("当前平台不支持真实发键，使用 Mock 后端（不会真实发键）");
     player_core::input::mock::MockBackend::new()
 }
 
@@ -218,7 +223,19 @@ fn target_probe() -> Box<dyn WindowProbe> {
     ))))
 }
 
-#[cfg(not(windows))]
+#[cfg(target_os = "macos")]
+fn target_probe() -> Box<dyn WindowProbe> {
+    use std::sync::RwLock;
+
+    use player_core::guard::WindowRule;
+    use player_core::guard::macos::MacProbe;
+
+    Box::new(MacProbe::new(Arc::new(RwLock::new(
+        WindowRule::default(),
+    ))))
+}
+
+#[cfg(not(any(windows, target_os = "macos")))]
 fn target_probe() -> Box<dyn WindowProbe> {
     Box::new(player_core::guard::mock::MockProbe::new())
 }

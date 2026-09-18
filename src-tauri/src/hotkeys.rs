@@ -6,13 +6,16 @@
 
 use std::str::FromStr;
 
+use serde::Serialize;
 use tauri::Runtime;
 use tauri_plugin_global_shortcut::{GlobalShortcut, Shortcut, ShortcutState};
 
 use crate::error::AppError;
 use crate::settings::Hotkeys;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+/// 序列化为 `"toggle"` / `"stop"`，模拟发声模式下经 `hotkey://action` 转发给前端
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "lowercase")]
 pub enum HotkeyAction {
     /// 空闲或出错时开始演奏"当前演奏"，演奏中暂停，暂停中继续
     Toggle,
