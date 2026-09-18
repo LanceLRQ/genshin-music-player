@@ -207,7 +207,11 @@ export function SettingsPage() {
                 onChange={(titles) => update((base) => ({ ...base, targetWindow: { ...base.targetWindow, titles } }))}
               />
             </Field>
-            <FieldDescription>演奏时只在类名和标题同时匹配的窗口在前台时才发键。至少保留一个标题。</FieldDescription>
+            <FieldDescription>
+              {platform === 'macos'
+                ? 'macOS 上按前台应用名（如 Google Chrome、Safari）或窗口标题匹配，类名不参与匹配；云原神请把浏览器应用名加进列表。'
+                : '演奏时只在类名和标题同时匹配的窗口在前台时才发键。至少保留一个标题。'}
+            </FieldDescription>
           </FieldGroup>
         </CardContent>
       </Card>

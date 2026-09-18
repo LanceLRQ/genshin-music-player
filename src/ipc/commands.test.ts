@@ -36,6 +36,7 @@ const params: ExecutionParams = {
 describe('IPC 命令', () => {
   it.each<[string, () => Promise<unknown>, unknown]>([
     ['get_env', () => commands.getEnv(), {}],
+    ['open_accessibility_settings', () => commands.openAccessibilitySettings(), {}],
     ['restart_as_admin', () => commands.restartAsAdmin(), {}],
     ['list_custom_instruments', () => commands.listCustomInstruments(), {}],
     ['save_custom_instrument', () => commands.saveCustomInstrument({ id: 'my-lyre' }), { profile: { id: 'my-lyre' } }],

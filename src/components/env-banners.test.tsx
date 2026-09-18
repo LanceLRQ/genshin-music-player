@@ -71,6 +71,39 @@ describe('EnvBanners', () => {
     expect(screen.queryByText('未以管理员身份运行，游戏将收不到按键。')).not.toBeInTheDocument();
   });
 
+  it('macOS 未授权时显示辅助功能警告，真实后端不显示模拟提示', () => {
+    renderWithEnv({ platform: 'macos', backend: 'macos', elevated: null, trusted: false });
+    expect(screen.getByText('未授予辅助功能权限，游戏将收不到按键。')).toBeInTheDocument();
+    expect(screen.queryByText('当前平台不能向游戏发送按键，“演奏”只会模拟并记录日志。')).not.toBeInTheDocument();
+  });
+
+  it('macOS 已授权时不显示辅助功能警告', () => {
+    const { container } = renderWithEnv({ platform: 'macos', backend: 'macos', elevated: null, trusted: true });
+    expect(container).toBeEmptyDOMElement();
+  });
+
+  it('点击「去系统设置授权」调用 open_accessibility_settings', async () => {
+    const calls: string[] = [];
+    mockIPC((cmd) => {
+      calls.push(cmd);
+      return null;
+    });
+    const { user } = renderWithEnv({ platform: 'macos', backend: 'macos', elevated: null, trusted: false });
+    await user.click(screen.getByRole('button', { name: '去系统设置授权' }));
+    expect(calls).toEqual(['open_accessibility_settings']);
+  });
+
+  it('点击「重新检测」重新读取环境', async () => {
+    const calls: string[] = [];
+    mockIPC((cmd) => {
+      calls.push(cmd);
+      return null;
+    });
+    const { user } = renderWithEnv({ platform: 'macos', backend: 'macos', elevated: null, trusted: false });
+    await user.click(screen.getByRole('button', { name: '重新检测' }));
+    expect(calls).toEqual(['get_env']);
+  });
+
   it('逐条显示启动警告，关闭后隐藏', async () => {
     const { user } = renderWithEnv({ startupWarnings: ['设置文件损坏，已恢复默认设置', '热键「F9」注册失败，可能被其他程序占用'] });
     expect(screen.getAllByRole('listitem').map((item) => item.textContent)).toEqual([

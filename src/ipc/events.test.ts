@@ -1,7 +1,7 @@
 import { emit } from '@tauri-apps/api/event';
 import { clearMocks, mockIPC } from '@tauri-apps/api/mocks';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { PLAYER_EVENTS, onPlayerProgress, onPlayerState, onPlayerSummary } from './events';
+import { PLAYER_EVENTS, onHotkeyAction, onPlayerProgress, onPlayerState, onPlayerSummary } from './events';
 import type { PlayerState, Progress, Summary } from './types';
 
 afterEach(() => {
@@ -46,6 +46,17 @@ describe('播放器事件', () => {
     expect(onState).toHaveBeenCalledWith(state);
     expect(onProgress).toHaveBeenCalledWith(progress);
     expect(onSummary).toHaveBeenCalledWith(summary);
+  });
+
+  it('热键转发事件按约定的事件名把动作原样交给处理函数', async () => {
+    mockIPC(() => null, { shouldMockEvents: true });
+    const onAction = vi.fn();
+    await onHotkeyAction(onAction);
+
+    // 直接用字面量事件名发布，同时验证 HOTKEY_EVENT 常量与后端约定一致
+    await emit('hotkey://action', 'toggle');
+
+    expect(onAction).toHaveBeenCalledWith('toggle');
   });
 
   it('取消订阅后不再调用处理函数', async () => {
