@@ -61,7 +61,7 @@ pub fn player_config(settings: &Settings, paths: &AppPaths) -> PlayerConfig {
 pub struct AppState {
     /// `Player` 本身是 `Send + Sync`，不需要再包 `Mutex`
     pub player: Player,
-    /// 输入后端名称：`windows` / `mock`
+    /// 输入后端名称：`windows` / `macos` / `mock`
     pub backend: &'static str,
     /// 最近一次 build_execution 的结果，play 与热键使用
     pub current: Mutex<Option<Arc<ExecutionTimeline>>>,
