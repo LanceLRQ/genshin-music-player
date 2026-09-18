@@ -91,6 +91,15 @@ describe('SettingsPage', () => {
     expect(successSpy).toHaveBeenCalledWith('设置已保存');
   });
 
+  it('模拟发声开关写入草稿', async () => {
+    const { user } = await renderPage();
+    const toggle = screen.getByRole('switch', { name: '模拟发声' });
+    expect(toggle).not.toBeChecked();
+    await user.click(toggle);
+    expect(useSettingsStore.getState().draft?.simulateSound).toBe(true);
+    expect(toggle).toBeChecked();
+  });
+
   it('组内冲突（两个全局热键相同）标红并禁用保存', async () => {
     const { user } = await renderPage();
     await user.click(screen.getByRole('button', { name: '开始 / 暂停 / 继续快捷键' }));

@@ -174,7 +174,19 @@ export function SettingsPage() {
               />
               <span className="w-12 text-right text-sm text-muted-foreground">{current.defaultHumanizeMs} ms</span>
             </Field>
-            <FieldDescription>默认人性化在导入新乐谱时作为初始值。</FieldDescription>
+            <Field orientation="horizontal">
+              <FieldLabel className="w-40 shrink-0" htmlFor="set-sound">
+                模拟发声
+              </FieldLabel>
+              <Switch
+                id="set-sound"
+                checked={current.simulateSound}
+                onCheckedChange={(simulateSound) => update((base) => ({ ...base, simulateSound }))}
+              />
+            </Field>
+            <FieldDescription>
+              默认人性化在导入新乐谱时作为初始值。模拟发声开启后，"演奏"不再向游戏发送按键，改用本窗口的合成音色播放，全局热键也随之控制本窗口发声。
+            </FieldDescription>
           </FieldGroup>
         </CardContent>
       </Card>

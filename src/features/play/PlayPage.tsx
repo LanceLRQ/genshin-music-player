@@ -15,6 +15,7 @@ import { TooltipProvider } from '@/components/ui/tooltip';
 import { useAppShortcuts } from '@/hooks/useAppShortcuts';
 import { useAdaptation } from '@/hooks/useAdaptation';
 import { useDebouncedValue } from '@/hooks/useDebouncedValue';
+import * as commands from '@/ipc/commands';
 import { formatSpeed } from '@/lib/format';
 import { isPlayerActive } from '@/lib/playerStatus';
 import { notifyError } from '@/lib/notify';
@@ -43,6 +44,11 @@ import { VirtualKeyboard } from './VirtualKeyboard';
 interface TextDialogState {
   tab: TextScoreTab;
   preset?: TextScorePreset;
+}
+
+/** 模拟发声是否开启：开启时演奏入口不向游戏发键，改由本窗口试听发声（设置未加载时按关闭处理） */
+function soundOnly(): boolean {
+  return useSettingsStore.getState().settings?.simulateSound ?? false;
 }
 
 /** 拖放悬停时的全窗口遮罩（设计 01 第 4.2 节） */
@@ -217,10 +223,19 @@ export function PlayPage() {
     if (currentProfile) transport.startPreview(currentProfile);
   }, []);
 
-  /** 演奏：先停止试听（设计 4.9），暂停中作为继续（设计 4.10 单轨恢复） */
+  /** 演奏：先停止试听（设计 4.9），暂停中作为继续（设计 4.10 单轨恢复）；模拟发声开启时改由试听发声 */
   const handlePlay = useCallback(async () => {
     const transport = useTransportStore.getState();
     if (transport.previewing) await transport.stopPreview();
+    if (soundOnly()) {
+      const currentProfile = useInstrumentStore
+        .getState()
+        .entries.find((entry) => entry.profile.id === useAdaptStore.getState().targetId)?.profile;
+      if (currentProfile) transport.startPreview(currentProfile);
+      // 兜底停掉可能仍在发键的后端演奏（fire-and-forget）
+      commands.stop().catch(() => undefined);
+      return;
+    }
     if (useTransportStore.getState().playerState.kind === 'paused') await useTransportStore.getState().resume();
     else await useTransportStore.getState().play();
   }, []);
@@ -247,7 +262,8 @@ export function PlayPage() {
       toast.info('这条音轨在当前区间内没有可弹的音');
       return;
     }
-    if (mode === 'preview') transport.startPreview(currentProfile);
+    // 模拟发声开启时单轨演奏与单轨试听同路径：都用试听发声，不向游戏发键
+    if (soundOnly() || mode === 'preview') transport.startPreview(currentProfile);
     else void transport.play();
   }, []);
 

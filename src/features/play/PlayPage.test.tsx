@@ -6,9 +6,10 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { previewPlayer } from '@/audio/previewPlayer';
 import { BUILTIN_INSTRUMENTS } from '@/core/instruments/registry';
 import type { Score } from '@/core/model/score';
-import type { ExecutionTimeline } from '@/ipc/types';
+import { DEFAULT_SETTINGS, type ExecutionTimeline } from '@/ipc/types';
 import { useAdaptStore } from '@/stores/adaptStore';
 import { useScoreStore } from '@/stores/scoreStore';
+import { useSettingsStore } from '@/stores/settingsStore';
 import { useTransportStore } from '@/stores/transportStore';
 import { PlayPage } from './PlayPage';
 
@@ -54,6 +55,7 @@ beforeEach(() => {
   vi.clearAllMocks();
   useScoreStore.setState(useScoreStore.getInitialState(), true);
   useAdaptStore.setState(useAdaptStore.getInitialState(), true);
+  useSettingsStore.setState(useSettingsStore.getInitialState(), true);
   useTransportStore.setState(useTransportStore.getInitialState(), true);
 });
 
@@ -93,6 +95,26 @@ describe('PlayPage', () => {
     await user.click(playButton);
     await waitFor(() => expect(calls).toContain('play'));
     expect(calls).toContain('build_execution');
+  });
+
+  it('模拟发声开启时点击演奏改由试听发声，不向游戏发键', async () => {
+    const calls = mockBackend();
+    useSettingsStore.setState({ settings: { ...DEFAULT_SETTINGS, simulateSound: true } });
+    useScoreStore.getState().setScore(score);
+    useAdaptStore.getState().resetToRecommended(score, lyre);
+    const user = userEvent.setup();
+    render(<PlayPage />);
+    const playButton = await screen.findByRole('button', { name: '演奏' });
+    await waitFor(() => expect(playButton).toBeEnabled());
+    await user.click(playButton);
+    expect(vi.mocked(previewPlayer.start)).toHaveBeenCalledWith(
+      execution,
+      lyre,
+      expect.objectContaining({ onPosition: expect.any(Function), onEnded: expect.any(Function) }),
+    );
+    expect(calls).not.toContain('play');
+    // 兜底停掉可能仍在发键的后端演奏
+    expect(calls).toContain('stop');
   });
 
   it('点击试听用当前执行时间线启动试听播放器', async () => {

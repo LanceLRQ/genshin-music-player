@@ -8,6 +8,7 @@ import { InstrumentsPage } from '@/features/instruments/InstrumentsPage';
 import { PlayPage } from '@/features/play/PlayPage';
 import { SettingsPage } from '@/features/settings/SettingsPage';
 import { usePlayerEvents } from '@/hooks/usePlayerEvents';
+import { useSoundModeHotkeys } from '@/hooks/useSoundModeHotkeys';
 import { watchSystemTheme } from '@/lib/theme';
 import { useEnvStore } from '@/stores/envStore';
 import { useInstrumentStore } from '@/stores/instrumentStore';
@@ -28,6 +29,7 @@ function CurrentPage({ page }: { page: PageId }) {
 export function App() {
   const page = useNavigationStore((state) => state.page);
   usePlayerEvents();
+  useSoundModeHotkeys();
 
   useEffect(() => {
     void useEnvStore.getState().load();

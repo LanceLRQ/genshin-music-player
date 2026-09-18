@@ -2,7 +2,7 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { act } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import type { ExecutionTimeline, EnvInfo } from '@/ipc/types';
+import { DEFAULT_SETTINGS, type ExecutionTimeline, type EnvInfo } from '@/ipc/types';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { useEnvStore } from '@/stores/envStore';
 import { useSettingsStore } from '@/stores/settingsStore';
@@ -114,5 +114,13 @@ describe('TransportBar', () => {
     expect(screen.getByText(/单独试听：音轨 1 · bright acoustic piano/)).toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: '停止单轨' }));
     expect(props.onSoloCancel).toHaveBeenCalledTimes(1);
+  });
+
+  it('模拟发声开启时状态行末尾显示徽标，关闭时不显示', () => {
+    useSettingsStore.setState({ settings: DEFAULT_SETTINGS });
+    renderBar();
+    expect(screen.queryByText('模拟发声')).not.toBeInTheDocument();
+    act(() => useSettingsStore.setState({ settings: { ...DEFAULT_SETTINGS, simulateSound: true } }));
+    expect(screen.getByText('模拟发声')).toBeInTheDocument();
   });
 });

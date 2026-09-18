@@ -97,6 +97,7 @@ export function TransportBar({ soloTrackName, onPreviewToggle, onPlay, onPause, 
             演奏进行中，停止后才能修改
           </span>
         )}
+        {settings?.simulateSound && <Badge variant="outline">模拟发声</Badge>}
       </div>
     </div>
   );
