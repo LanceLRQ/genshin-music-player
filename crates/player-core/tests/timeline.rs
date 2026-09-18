@@ -420,6 +420,107 @@ fn every_key_alternates_down_and_up_under_dense_input() {
 }
 
 #[test]
+fn loop_wrap_drops_next_round_first_press_when_too_dense() {
+    let source = timeline(
+        40.0,
+        vec![
+            press(0.0, &["KeyA", "KeyB"], 10.0),
+            press(970.0, &["KeyA"], 10.0),
+        ],
+    );
+    let execution = build(&source, with_range(0.0, 1000.0, true));
+    // KeyA 回卷间隔 = 1000 − 970 + 0 = 30 < 40：下一轮首按（时间线里的首按）被丢弃；
+    // KeyB 只按一次，回卷间隔 = 1000 ≥ 40，不受同和弦过密键的影响
+    assert_eq!(execution.dropped, 1);
+    let downs: Vec<_> = execution
+        .events
+        .iter()
+        .filter(|event| !event.down.is_empty())
+        .map(|event| (event.t_ms, event.down.clone()))
+        .collect();
+    assert_eq!(
+        downs,
+        vec![
+            (0.0, vec!["KeyB".to_string()]),
+            (970.0, vec!["KeyA".to_string()]),
+        ]
+    );
+    // 丢弃后 KeyA 的回卷间隔变成 1000 − 970 + 970 = 1000 ≥ 40
+    assert_eq!(execution.duration_ms, 1000.0);
+}
+
+#[test]
+fn loop_wrap_keeps_first_press_when_gap_sufficient() {
+    let source = timeline(
+        40.0,
+        vec![press(0.0, &["KeyA"], 10.0), press(950.0, &["KeyA"], 10.0)],
+    );
+    let execution = build(&source, with_range(0.0, 1000.0, true));
+    // 回卷间隔 = 1000 − 950 + 0 = 50 ≥ 40：首按保留
+    assert_eq!(execution.dropped, 0);
+    let downs: Vec<_> = execution
+        .events
+        .iter()
+        .filter(|event| !event.down.is_empty())
+        .map(|event| event.t_ms)
+        .collect();
+    assert_eq!(downs, vec![0.0, 950.0]);
+}
+
+#[test]
+fn non_looped_playback_ignores_wrap_constraint() {
+    // 与回卷过密用例相同的按键，非循环时没有「下一轮」，不应有任何回卷丢弃
+    let source = timeline(
+        40.0,
+        vec![press(0.0, &["KeyA"], 10.0), press(970.0, &["KeyA"], 10.0)],
+    );
+    let execution = build(&source, with_range(0.0, 1000.0, false));
+    assert_eq!(execution.dropped, 0);
+    let downs: Vec<_> = execution
+        .events
+        .iter()
+        .filter(|event| !event.down.is_empty())
+        .map(|event| event.t_ms)
+        .collect();
+    assert_eq!(downs, vec![0.0, 970.0]);
+}
+
+#[test]
+fn loop_wrap_uses_selected_range_and_execution_time() {
+    // 区间循环（start>0）：回卷间隔按所选区间长度计算，而不是整曲时长
+    let source = timeline(
+        40.0,
+        vec![
+            press(100.0, &["KeyA"], 10.0),
+            press(1070.0, &["KeyA"], 10.0),
+        ],
+    );
+    let execution = build(&source, with_range(100.0, 1100.0, true));
+    // 变基后 0 与 970：回卷间隔 = 1000 − 970 + 0 = 30 < 40 → 丢弃
+    assert_eq!(execution.dropped, 1);
+    let downs: Vec<_> = execution
+        .events
+        .iter()
+        .filter(|event| !event.down.is_empty())
+        .map(|event| event.t_ms)
+        .collect();
+    assert_eq!(downs, vec![970.0]);
+
+    // 速度换算以执行时间线为准：0.5 倍速下同一对按键拉长到 60ms ≥ 40，保留
+    let mut slow = with_range(100.0, 1100.0, true);
+    slow.speed = 0.5;
+    let execution = build(&source, slow);
+    assert_eq!(execution.dropped, 0);
+    let downs: Vec<_> = execution
+        .events
+        .iter()
+        .filter(|event| !event.down.is_empty())
+        .map(|event| event.t_ms)
+        .collect();
+    assert_eq!(downs, vec![0.0, 1940.0]);
+}
+
+#[test]
 fn rejects_press_earlier_than_previous() {
     let source = timeline(
         40.0,

@@ -86,7 +86,14 @@ pub fn build_execution(
     let mut presses = slice_and_scale(timeline, params);
     apply_humanize(&mut presses, params);
     presses.sort_by(|a, b| a.t_ms.total_cmp(&b.t_ms));
-    let (notes, dropped) = resolve_conflicts(&presses, timeline.min_repeat_gap_ms);
+    let (mut notes, mut dropped) = resolve_conflicts(&presses, timeline.min_repeat_gap_ms);
+    // 循环回卷衔接的过密检查放在轮内冲突解决之后：轮内过滤看不到「下一轮」，
+    // 回卷衔接是唯一绕过 min_repeat_gap 的路径（M2 遗留 7.7）。周期取调度器将采用
+    // 的循环周期（durationMs，含区间尾部休止，已是执行时间线时间），只在 looped 生效
+    if params.range.looped && !notes.is_empty() {
+        let period_ms = execution_duration_ms(&to_events(&notes), params);
+        dropped += resolve_loop_wrap(&mut notes, period_ms, timeline.min_repeat_gap_ms);
+    }
     let events = to_events(&notes);
     let duration_ms = execution_duration_ms(&events, params);
 
@@ -173,6 +180,43 @@ fn resolve_conflicts<'a>(
         }
     }
     (notes, dropped)
+}
+
+/// 循环回卷衔接：把「下一轮开头」视作时间线末尾之后的下一次按下，对每个键
+/// 套用与轮内一致的 min_repeat_gap 约束——回卷间隔 = 循环周期 − 该键末次按下
+/// + 该键下次按下。过密时丢弃下一轮的首按；时间线每一轮共用同一份事件，
+/// 丢弃即从时间线里去掉该键的首按，并计入 dropped。
+/// 不需要为回卷补提前松开：循环周期 ≥ 最后一个事件的时间，末次松开必然
+/// 先于（至多重合于）下一轮同键的按下。
+fn resolve_loop_wrap<'a>(
+    notes: &mut Vec<KeyNote<'a>>,
+    period_ms: f64,
+    min_repeat_gap_ms: f64,
+) -> u32 {
+    let min_gap = min_repeat_gap_ms.max(MIN_REPEAT_GAP_FLOOR_MS);
+    // notes 按按下时间有序：先收集每个键的按下位置，末位即该键本轮末按
+    let mut positions: HashMap<&str, Vec<usize>> = HashMap::new();
+    for (index, note) in notes.iter().enumerate() {
+        positions.entry(note.code).or_default().push(index);
+    }
+    let mut drop_indices: Vec<usize> = Vec::new();
+    for note_positions in positions.values() {
+        let last_down = notes[note_positions[note_positions.len() - 1]].down_ms;
+        for &index in note_positions {
+            // 首按被丢后，下一次按下成为新的回卷首按，继续检查直到间隔达标
+            if period_ms - last_down + notes[index].down_ms >= min_gap {
+                break;
+            }
+            drop_indices.push(index);
+        }
+    }
+    let dropped = drop_indices.len() as u32;
+    // 按下标从大到小移除，保持其余音符的相对顺序
+    drop_indices.sort_unstable_by(|a, b| b.cmp(a));
+    for index in drop_indices {
+        notes.remove(index);
+    }
+    dropped
 }
 
 #[derive(Default)]
