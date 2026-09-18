@@ -40,7 +40,7 @@
 
 首个版本发布后，将在 [Releases](https://github.com/LanceLRQ/genshin-music-player/releases) 提供 Windows 安装包。安装后**右键以管理员身份运行**——普通权限下系统会拦截发给游戏的按键，软件会在顶部提示并提供"以管理员身份重启"按钮。
 
-从源码构建需要 Node.js 24、pnpm 11 和 Rust stable：
+从源码构建需要 Node.js 24、pnpm 11 和 Rust stable。Windows 上还需要 Visual Studio 的「使用 C++ 的桌面开发」工作负载（MSVC 编译器 + Windows SDK）；并且 `cargo` 不能直接在 Git Bash 里运行——Git Bash 自带的 `link.exe`（coreutils）会遮蔽 MSVC 链接器导致链接失败，请在 PowerShell 或「Developer PowerShell for VS」中执行 cargo 命令：
 
 ```bash
 git clone https://github.com/LanceLRQ/genshin-music-player.git
