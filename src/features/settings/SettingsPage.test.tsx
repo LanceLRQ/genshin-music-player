@@ -100,6 +100,22 @@ describe('SettingsPage', () => {
     expect(toggle).toBeChecked();
   });
 
+  it('模拟发声由关到开保存成功后停掉可能仍在发键的后端演奏', async () => {
+    const calls: string[] = [];
+    const saved = { ...DEFAULT_SETTINGS, simulateSound: true };
+    mockIPC((cmd) => {
+      calls.push(cmd);
+      return cmd === 'save_settings' ? saved : null;
+    });
+    const { user } = await renderPage();
+    await user.click(screen.getByRole('switch', { name: '模拟发声' }));
+    await user.click(screen.getByRole('button', { name: '保存设置' }));
+    await waitFor(() => expect(useSettingsStore.getState().draft).toBeNull());
+    // 兜底 stop 必须出现在保存成功之后（后端可能在 keys 模式演奏中，开启后不能再向游戏发键）
+    expect(calls).toContain('save_settings');
+    expect(calls.indexOf('stop')).toBeGreaterThan(calls.indexOf('save_settings'));
+  });
+
   it('组内冲突（两个全局热键相同）标红并禁用保存', async () => {
     const { user } = await renderPage();
     await user.click(screen.getByRole('button', { name: '开始 / 暂停 / 继续快捷键' }));

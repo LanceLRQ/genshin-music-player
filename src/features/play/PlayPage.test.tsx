@@ -117,6 +117,43 @@ describe('PlayPage', () => {
     expect(calls).toContain('stop');
   });
 
+  it('混合态回归：后端暂停中保存了模拟发声后点「继续」，试听不会被 stop 引发的 idle 事件掐掉', async () => {
+    const calls: string[] = [];
+    mockIPC((cmd) => {
+      calls.push(cmd);
+      if (cmd === 'stop') {
+        // 复现真实链路：后端在播放线程处理 stop 时同步 emit player://state: idle，
+        // 事件先于命令响应到达前端并经 setPlayerState 消化
+        useTransportStore.getState().setPlayerState({ kind: 'idle' });
+      }
+      return cmd === 'build_execution' ? execution : null;
+    });
+    useSettingsStore.setState({ settings: { ...DEFAULT_SETTINGS, simulateSound: true } });
+    useScoreStore.getState().setScore(score);
+    useAdaptStore.getState().resetToRecommended(score, lyre);
+    // 混合态：后端 keys 模式暂停中（此时开启模拟发声不会自动停后端）
+    useTransportStore.setState({ playerState: { kind: 'paused', reason: 'user', positionMs: 0 } });
+    const user = userEvent.setup();
+    render(<PlayPage />);
+    // 暂停中演奏按钮显示为「继续」，等执行时间线就绪后可点
+    const playButton = await screen.findByRole('button', { name: '继续' });
+    await waitFor(() => expect(playButton).toBeEnabled());
+    await user.click(playButton);
+    expect(calls).toContain('stop');
+    expect(calls).not.toContain('play');
+    await waitFor(() => expect(useTransportStore.getState().previewing).toBe(true));
+    expect(vi.mocked(previewPlayer.start)).toHaveBeenCalledWith(
+      execution,
+      lyre,
+      expect.objectContaining({ onPosition: expect.any(Function), onEnded: expect.any(Function) }),
+    );
+    // 顺序断言：消化 idle 的 previewPlayer.stop 发生在试听启动之前（此刻还没东西可停，无害）；
+    // 修复前兜底 stop 在 startPreview 之后，idle 事件会把刚起的试听掐掉、previewing 最终为 false
+    const stopOrder = vi.mocked(previewPlayer.stop).mock.invocationCallOrder[0];
+    const startOrder = vi.mocked(previewPlayer.start).mock.invocationCallOrder[0];
+    expect(stopOrder).toBeLessThan(startOrder);
+  });
+
   it('模拟发声下点单独演奏：solo 标记记为单独试听，播完后清标记并恢复主时间线', async () => {
     const calls = mockBackend();
     useSettingsStore.setState({ settings: { ...DEFAULT_SETTINGS, simulateSound: true } });

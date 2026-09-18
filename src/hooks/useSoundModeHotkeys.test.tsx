@@ -1,6 +1,6 @@
 import { emit } from '@tauri-apps/api/event';
 import { clearMocks, mockIPC } from '@tauri-apps/api/mocks';
-import { act, renderHook } from '@testing-library/react';
+import { act, renderHook, waitFor } from '@testing-library/react';
 import { toast } from 'sonner';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { previewPlayer } from '@/audio/previewPlayer';
@@ -70,13 +70,46 @@ describe('useSoundModeHotkeys', () => {
     useTransportStore.setState({ execution });
     renderHook(() => useSoundModeHotkeys());
     await emit('hotkey://action', 'toggle');
+    expect(calls).toContain('stop');
+    // 处理函数是异步的（先 await 兜底 stop 再起试听），等它跑完再断言
+    await waitFor(() => expect(useTransportStore.getState().previewing).toBe(true));
     expect(vi.mocked(previewPlayer.start)).toHaveBeenCalledWith(
       execution,
       lyre,
       expect.objectContaining({ onPosition: expect.any(Function), onEnded: expect.any(Function) }),
     );
-    expect(useTransportStore.getState().previewing).toBe(true);
+  });
+
+  it('混合态回归：后端演奏中收到 toggle，试听不会被 stop 引发的 idle 事件掐掉', async () => {
+    const calls: string[] = [];
+    mockIPC(
+      (cmd) => {
+        calls.push(cmd);
+        if (cmd === 'stop') {
+          // 复现真实链路：后端在播放线程处理 stop 时同步 emit player://state: idle，
+          // 事件先于命令响应到达前端并经 setPlayerState 消化
+          useTransportStore.getState().setPlayerState({ kind: 'idle' });
+        }
+        return null;
+      },
+      { shouldMockEvents: true },
+    );
+    useSettingsStore.setState({ settings: { ...DEFAULT_SETTINGS, simulateSound: true } });
+    // 混合态：后端 keys 模式演奏中（此时开启模拟发声不会自动停后端）
+    useTransportStore.setState({ execution, playerState: { kind: 'playing' } });
+    renderHook(() => useSoundModeHotkeys());
+    await emit('hotkey://action', 'toggle');
+    await waitFor(() => expect(useTransportStore.getState().previewing).toBe(true));
+    expect(vi.mocked(previewPlayer.start)).toHaveBeenCalledWith(
+      execution,
+      lyre,
+      expect.objectContaining({ onPosition: expect.any(Function), onEnded: expect.any(Function) }),
+    );
     expect(calls).toContain('stop');
+    // 顺序断言：消化 idle 的 previewPlayer.stop 发生在试听启动之前（此时还没东西可停，无害）
+    const stopOrder = vi.mocked(previewPlayer.stop).mock.invocationCallOrder[0];
+    const startOrder = vi.mocked(previewPlayer.start).mock.invocationCallOrder[0];
+    expect(stopOrder).toBeLessThan(startOrder);
   });
 
   it('模拟发声开启时试听中收到 toggle：只停止试听，不重开也不发命令', async () => {
