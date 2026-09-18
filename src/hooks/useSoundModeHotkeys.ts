@@ -18,12 +18,12 @@ export function useSoundModeHotkeys(): void {
     let disposed = false;
     let unlisten: (() => void) | undefined;
 
-    const handleAction = (action: HotkeyAction) => {
+    const handleAction = async (action: HotkeyAction) => {
       if (!(useSettingsStore.getState().settings?.simulateSound ?? false)) return;
       const transport = useTransportStore.getState();
       if (action === 'stop') {
         if (transport.previewing) void transport.stopPreview();
-        // 兜底停掉可能仍在发键的后端演奏（fire-and-forget）
+        // 兜底停掉可能仍在发键的后端演奏（fire-and-forget：stop 热键不重开试听，无需等待）
         commands.stop().catch(() => undefined);
         return;
       }
@@ -31,12 +31,14 @@ export function useSoundModeHotkeys(): void {
         void transport.stopPreview();
         return;
       }
-      // 空闲时先兜底停掉后端可能残留的演奏，再用当前目标乐器开始试听
-      commands.stop().catch(() => undefined);
+      // 空闲时先兜底停掉后端可能残留的演奏。必须 await：后端在播放线程处理 stop 时同步 emit
+      // player://state: idle，await 返回时该事件已被 setPlayerState 消化（此刻 previewing 还是
+      // false，清试听逻辑无害）；先 stop 再 startPreview，试听才不会被随后的 idle 事件掐掉
+      await commands.stop().catch(() => undefined);
       const currentProfile = useInstrumentStore
         .getState()
         .entries.find((entry) => entry.profile.id === useAdaptStore.getState().targetId)?.profile;
-      if (currentProfile) transport.startPreview(currentProfile);
+      if (currentProfile) useTransportStore.getState().startPreview(currentProfile);
     };
 
     onHotkeyAction(handleAction)

@@ -228,12 +228,14 @@ export function PlayPage() {
     const transport = useTransportStore.getState();
     if (transport.previewing) await transport.stopPreview();
     if (soundOnly()) {
+      // 兜底停掉可能仍在发键的后端演奏。必须 await：后端在播放线程处理 stop 时同步 emit
+      // player://state: idle，await 返回时该事件已被 setPlayerState 消化（此刻 previewing 还是
+      // false，清试听逻辑无害）；先 stop 再 startPreview，试听才不会被随后的 idle 事件掐掉
+      await commands.stop().catch(() => undefined);
       const currentProfile = useInstrumentStore
         .getState()
         .entries.find((entry) => entry.profile.id === useAdaptStore.getState().targetId)?.profile;
-      if (currentProfile) transport.startPreview(currentProfile);
-      // 兜底停掉可能仍在发键的后端演奏（fire-and-forget）
-      commands.stop().catch(() => undefined);
+      if (currentProfile) useTransportStore.getState().startPreview(currentProfile);
       return;
     }
     if (useTransportStore.getState().playerState.kind === 'paused') await useTransportStore.getState().resume();
@@ -265,8 +267,13 @@ export function PlayPage() {
       toast.info('这条音轨在当前区间内没有可弹的音');
       return;
     }
-    if (soloMode === 'preview') transport.startPreview(currentProfile);
-    else void transport.play();
+    if (soloMode === 'preview') {
+      // 兜底停掉可能仍在发键的后端演奏（与 handlePlay / 热键 toggle 一致）：先 await stop——
+      // await 返回时后端同步 emit 的 idle 事件已被消化（此刻 previewing 还是 false，无害），
+      // 随后再起试听就不会被 idle 事件掐掉
+      await commands.stop().catch(() => undefined);
+      useTransportStore.getState().startPreview(currentProfile);
+    } else void transport.play();
   }, []);
 
   const handleSoloCancel = useCallback(() => {
