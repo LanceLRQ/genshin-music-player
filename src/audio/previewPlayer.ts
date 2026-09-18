@@ -10,6 +10,19 @@ const LOOKAHEAD_MS = 100;
 const START_DELAY_MS = 50;
 /** 位置回调节流到约 30fps */
 const POSITION_INTERVAL_MS = 1000 / 30;
+/** 记忆的试听输出设备 id（空字符串 = 系统默认） */
+const SINK_STORAGE_KEY = 'previewSinkId';
+
+function readStoredSinkId(): string {
+  try {
+    return localStorage.getItem(SINK_STORAGE_KEY) ?? '';
+  } catch {
+    return '';
+  }
+}
+
+/** 带 setSinkId 的 AudioContext；旧版 lib.dom 里没有这个方法，统一走可选调用 */
+type SinkCapableContext = AudioContext & { setSinkId?: (sinkId: string) => Promise<void> };
 
 export interface PreviewCallbacks {
   /** 当前执行时间（毫秒），约 30fps */
@@ -40,16 +53,34 @@ export class PreviewPlayer {
   private context: AudioContext | null = null;
   private master: GainNode | null = null;
   private volume = 0.7;
+  private sinkId = readStoredSinkId();
   private session: Session | null = null;
 
   get playing(): boolean {
     return this.session !== null;
   }
 
+  /** 当前选中的输出设备 id；空字符串表示系统默认 */
+  get currentSinkId(): string {
+    return this.sinkId;
+  }
+
   /** 0..1，只影响试听 */
   setVolume(volume: number): void {
     this.volume = Math.min(Math.max(volume, 0), 1);
     if (this.context && this.master) this.master.gain.setValueAtTime(this.volume, this.context.currentTime);
+  }
+
+  /** 选择试听输出设备；空字符串回到系统默认。设备已不存在时 reject */
+  async setSink(sinkId: string): Promise<void> {
+    this.sinkId = sinkId;
+    try {
+      localStorage.setItem(SINK_STORAGE_KEY, sinkId);
+    } catch {
+      // localStorage 不可用时只影响下次启动的记忆
+    }
+    const context = this.context as SinkCapableContext | null;
+    if (context?.setSinkId) await context.setSinkId(sinkId);
   }
 
   /** 点击键帽试听单个键 */
@@ -106,6 +137,13 @@ export class PreviewPlayer {
       this.master = this.context.createGain();
       this.master.gain.value = this.volume;
       this.master.connect(this.context.destination);
+      const sinkCapable = this.context as SinkCapableContext;
+      if (this.sinkId && sinkCapable.setSinkId) {
+        // 上次记住的设备可能已经拔掉，失败时回到系统默认
+        void sinkCapable.setSinkId(this.sinkId).catch(() => {
+          this.sinkId = '';
+        });
+      }
     }
     if (this.context.state === 'suspended') void this.context.resume();
     return { context: this.context, master: this.master };

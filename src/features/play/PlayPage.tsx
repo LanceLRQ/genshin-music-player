@@ -28,6 +28,7 @@ import { AdaptReportCard } from './AdaptReportCard';
 import { scoreDurationMs } from './scoreInfo';
 import { ImportMenu, type TextScoreTab } from './ImportMenu';
 import { InstrumentSelect } from './InstrumentSelect';
+import { OutputDeviceSelect } from './OutputDeviceSelect';
 import { parseScoreFile, pickScoreFile, readScoreFile, writeScoreJson } from './fileIO';
 import { RangeControls } from './RangeControls';
 import { ScoreHeader } from './ScoreHeader';
@@ -362,6 +363,7 @@ export function PlayPage() {
                   />
                   <span className="w-12 text-right text-sm tabular-nums">{Math.round(volume * 100)}%</span>
                 </div>
+                <OutputDeviceSelect />
               </div>
               <TransportBar
                 soloTrackName={solo ? (score.tracks.find((track) => track.id === solo.trackId)?.name ?? null) : null}
