@@ -117,6 +117,29 @@ describe('PlayPage', () => {
     expect(calls).toContain('stop');
   });
 
+  it('模拟发声下点单独演奏：solo 标记记为单独试听，播完后清标记并恢复主时间线', async () => {
+    const calls = mockBackend();
+    useSettingsStore.setState({ settings: { ...DEFAULT_SETTINGS, simulateSound: true } });
+    useScoreStore.getState().setScore(score);
+    useAdaptStore.getState().resetToRecommended(score, lyre);
+    const user = userEvent.setup();
+    render(<PlayPage />);
+    const soloButton = await screen.findByRole('button', { name: `单独演奏 ${score.tracks[0].name}` });
+    await waitFor(() => expect(soloButton).toBeEnabled());
+    await user.click(soloButton);
+    // solo 必须记为 preview：只有 preview 结束时 endSolo 才会清标记并恢复主时间线
+    expect(useTransportStore.getState().solo).toEqual({ mode: 'preview', trackId: 't0' });
+    expect(calls).not.toContain('play');
+    expect(vi.mocked(previewPlayer.start)).toHaveBeenCalled();
+    // 模拟播放器自然播完回调，验证 endSolo 清理链生效
+    const onEnded = vi.mocked(previewPlayer.start).mock.calls[0][2]?.onEnded;
+    await act(async () => {
+      onEnded?.();
+    });
+    await waitFor(() => expect(useTransportStore.getState().solo).toBeNull());
+    expect(useTransportStore.getState().previewing).toBe(false);
+  });
+
   it('点击试听用当前执行时间线启动试听播放器', async () => {
     mockBackend();
     useScoreStore.getState().setScore(score);

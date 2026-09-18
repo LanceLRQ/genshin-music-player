@@ -257,13 +257,15 @@ export function PlayPage() {
     const currentOptions = useAdaptStore.getState().options;
     if (!currentScore || !currentProfile || !currentOptions) return;
     const single = adapt(currentScore, currentProfile, { ...currentOptions, tracks: [trackId] });
-    const started = await useTransportStore.getState().startSolo({ mode, trackId }, single.timeline);
+    // 模拟发声下与单独试听同语义：solo 标记必须记为 preview，否则 stopPreview / finishPreview
+    // 不会触发 endSolo，单轨结束后标记与单轨 execution 会永久残留并污染后续演奏
+    const soloMode: SoloMode = soundOnly() ? 'preview' : mode;
+    const started = await useTransportStore.getState().startSolo({ mode: soloMode, trackId }, single.timeline);
     if (!started) {
       toast.info('这条音轨在当前区间内没有可弹的音');
       return;
     }
-    // 模拟发声开启时单轨演奏与单轨试听同路径：都用试听发声，不向游戏发键
-    if (soundOnly() || mode === 'preview') transport.startPreview(currentProfile);
+    if (soloMode === 'preview') transport.startPreview(currentProfile);
     else void transport.play();
   }, []);
 
