@@ -22,9 +22,11 @@ interface PitchedNote {
   pitch: number;
 }
 
-/** 音高类乐器默认选中非鼓轨；敲击类乐器选中全部音轨 */
+/** 默认只勾选一条音轨：第一条有音符的合规轨（音高类乐器排除鼓轨）；没有合规轨时为空 */
 export function defaultTrackIds(score: Score, profile: InstrumentProfile): string[] {
-  return score.tracks.filter((track) => profile.kind === 'percussion' || !track.isDrum).map((track) => track.id);
+  const eligible = score.tracks.filter((track) => profile.kind === 'percussion' || !track.isDrum);
+  const first = eligible.find((track) => track.notes.length > 0);
+  return first ? [first.id] : [];
 }
 
 export function recommendShift(

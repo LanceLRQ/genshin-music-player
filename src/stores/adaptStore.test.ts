@@ -41,8 +41,8 @@ describe('adaptStore', () => {
     expect(state.manual).toBe(false);
   });
 
-  it('敲击类乐器默认选中全部音轨', () => {
+  it('敲击类乐器默认选第一条有音符的音轨', () => {
     useAdaptStore.getState().resetToRecommended(score, drum);
-    expect(useAdaptStore.getState().options?.tracks).toEqual(['t0', 't1']);
+    expect(useAdaptStore.getState().options?.tracks).toEqual(['t0']);
   });
 });

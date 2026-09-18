@@ -67,10 +67,29 @@ describe('recommendShift', () => {
 });
 
 describe('defaultTrackIds', () => {
-  it('音高类乐器默认选中非鼓轨，敲击类乐器选中全部音轨', () => {
-    const score = scoreOf(track('t0', [note(0, 60)]), track('t1', [note(0, 36)], true));
+  it('默认只选中第一条有音符的合规音轨', () => {
+    const score = scoreOf(track('t0', [note(0, 60)]), track('t1', [note(0, 62)]));
     expect(defaultTrackIds(score, lyre)).toEqual(['t0']);
-    expect(defaultTrackIds(score, drum)).toEqual(['t0', 't1']);
+  });
+
+  it('音高类乐器跳过鼓轨与没有音符的音轨', () => {
+    const score = scoreOf(
+      track('t0', [note(0, 36)], true),
+      track('t1', []),
+      track('t2', [note(0, 60)]),
+      track('t3', [note(0, 62)]),
+    );
+    expect(defaultTrackIds(score, lyre)).toEqual(['t2']);
+  });
+
+  it('敲击类乐器从全部音轨里选第一条有音符的', () => {
+    const score = scoreOf(track('t0', []), track('t1', [note(0, 36)], true), track('t2', [note(0, 38)], true));
+    expect(defaultTrackIds(score, drum)).toEqual(['t1']);
+  });
+
+  it('没有合规音轨时返回空数组', () => {
+    expect(defaultTrackIds(scoreOf(track('t0', [note(0, 36)], true)), lyre)).toEqual([]);
+    expect(defaultTrackIds(scoreOf(track('t0', [])), drum)).toEqual([]);
   });
 });
 
