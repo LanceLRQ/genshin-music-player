@@ -100,6 +100,15 @@ describe('SettingsPage', () => {
     expect(toggle).toBeChecked();
   });
 
+  it('和弦键匹配开关默认开启，关闭后写入草稿', async () => {
+    const { user } = await renderPage();
+    const toggle = screen.getByRole('switch', { name: '和弦键匹配' });
+    expect(toggle).toBeChecked();
+    await user.click(toggle);
+    expect(useSettingsStore.getState().draft?.useChordKeys).toBe(false);
+    expect(toggle).not.toBeChecked();
+  });
+
   it('模拟发声由关到开保存成功后停掉可能仍在发键的后端演奏', async () => {
     const calls: string[] = [];
     const saved = { ...DEFAULT_SETTINGS, simulateSound: true };

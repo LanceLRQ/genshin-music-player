@@ -53,9 +53,17 @@ fn builtin_instruments_are_listed_in_fixed_order() {
             "vintage-lyre",
             "two-row-prototype",
             "festive-drum",
+            "yuco-lyre",
+            "harmony-clavier",
+            "sprightly-lyre",
+            "lingering-echo",
+            "evening-horn",
+            "juju-drum",
+            "banquet-drum",
         ]
     );
     assert!(is_builtin_instrument_id("festive-drum"));
+    assert!(is_builtin_instrument_id("yuco-lyre"));
     assert!(!is_builtin_instrument_id("my-lyre"));
 }
 
@@ -84,13 +92,14 @@ fn builtin_layouts_keep_rows_pitches_and_timing() {
     assert_eq!(lyre.rows[0].keys[0].code, "KeyQ");
     assert_eq!(lyre.rows[0].keys[0].pitch, Some(72));
     assert_eq!(lyre.timing.hold_ms, 30.0);
-    assert_eq!(lyre.timing.min_repeat_gap_ms, 40.0);
+    // 2026-09-19 游戏内校准写回：60 帧最小可靠间隔 60ms + 25% 余量（清单 4.6）
+    assert_eq!(lyre.timing.min_repeat_gap_ms, 75.0);
 
     let two_row = find_builtin_instrument("two-row-prototype").unwrap();
     assert_eq!(two_row.rows[1].keys[5].code, "KeyN");
 
     let drum = find_builtin_instrument("festive-drum").unwrap();
-    assert_eq!(drum.rows[0].keys[0].code, "KeyF");
+    assert_eq!(drum.rows[0].keys[0].code, "KeyS");
     assert_eq!(drum.rows[0].keys[0].pitch, None);
     assert!(find_builtin_instrument("nope").is_none());
 }

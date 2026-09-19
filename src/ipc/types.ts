@@ -127,6 +127,8 @@ export interface Settings {
   writeExecutionLog: boolean;
   /** 模拟发声：开启后"演奏"不向游戏发键，改由本窗口的合成音色播放 */
   simulateSound: boolean;
+  /** 和弦键匹配（M6）：关闭后和弦乐器不再使用和弦键，全部逐音按下 */
+  useChordKeys: boolean;
 }
 
 /** 与 Rust 端 Settings::default() 一致 */
@@ -138,6 +140,7 @@ export const DEFAULT_SETTINGS: Settings = {
   defaultHumanizeMs: 0,
   writeExecutionLog: true,
   simulateSound: false,
+  useChordKeys: true,
 };
 
 export const BACKEND_ERROR_CODES = [

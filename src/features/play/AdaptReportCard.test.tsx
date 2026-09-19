@@ -10,6 +10,8 @@ const report: AdaptReport = {
   folded: 0,
   merged: 1,
   dropped: { blackKey: 12, outOfRange: 0, polyphony: 2, tooDense: 0, unmappedDrum: 0 },
+  chordHits: 0,
+  chordFallbacks: 0,
 };
 
 describe('AdaptReportCard', () => {
@@ -46,5 +48,22 @@ describe('AdaptReportCard', () => {
     expect(screen.queryByText(/未映射/)).not.toBeInTheDocument();
     // 每个非零项都有 ⓘ 说明图标（Tooltip 内容走 Portal，图标是相邻兄弟节点）
     expect(screen.getByText(/丢弃 12：黑键/).parentElement!.querySelector('svg')).not.toBeNull();
+  });
+
+  it('有和弦命中或回退时展示和弦键命中率，全为 0 时不展示', () => {
+    const chordReport: AdaptReport = { ...report, chordHits: 3, chordFallbacks: 1 };
+    const { rerender } = render(
+      <TooltipProvider>
+        <AdaptReportCard report={chordReport} hasTracks />
+      </TooltipProvider>,
+    );
+    expect(screen.getByText(/和弦键 命中 3\/4（75%）/)).toBeInTheDocument();
+    expect(screen.getByText(/回退 1/)).toBeInTheDocument();
+    rerender(
+      <TooltipProvider>
+        <AdaptReportCard report={report} hasTracks />
+      </TooltipProvider>,
+    );
+    expect(screen.queryByText(/和弦键/)).not.toBeInTheDocument();
   });
 });

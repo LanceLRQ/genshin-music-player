@@ -11,18 +11,24 @@
         { "pitch": 60, "code": "KeyQ" },
         { "pitch": 62, "code": "KeyW" },
         { "pitch": 64, "code": "KeyE" },
-        { "pitch": 65, "code": "KeyR" }
+        { "pitch": 65, "code": "KeyR" },
+        { "pitch": 67, "code": "KeyT" },
+        { "pitch": 69, "code": "KeyY" },
+        { "pitch": 71, "code": "KeyU" }
       ]
     },
     {
       "label": "低音谱号",
       "keys": [
-        { "pitch": 67, "code": "KeyA" },
-        { "pitch": 69, "code": "KeyS" },
-        { "pitch": 71, "code": "KeyD" },
-        { "pitch": 72, "code": "KeyF" }
+        { "pitch": 48, "code": "KeyA" },
+        { "pitch": 50, "code": "KeyS" },
+        { "pitch": 52, "code": "KeyD" },
+        { "pitch": 53, "code": "KeyF" },
+        { "pitch": 55, "code": "KeyG" },
+        { "pitch": 57, "code": "KeyH" },
+        { "pitch": 59, "code": "KeyJ" }
       ]
     }
   ],
-  "timing": { "holdMs": 30, "minRepeatGapMs": 40, "sustain": false }
+  "timing": { "holdMs": 30, "minRepeatGapMs": 120, "sustain": false }
 }

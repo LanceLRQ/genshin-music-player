@@ -5,6 +5,7 @@ import { useDebouncedValue } from '@/hooks/useDebouncedValue';
 import { useAdaptStore } from '@/stores/adaptStore';
 import { useInstrumentStore } from '@/stores/instrumentStore';
 import { useScoreStore } from '@/stores/scoreStore';
+import { useSettingsStore } from '@/stores/settingsStore';
 
 export interface Adaptation {
   /** 合并适配出的乐谱时间线；还没有乐谱、参数或乐器时为 null */
@@ -19,18 +20,20 @@ export function useAdaptation(): Adaptation {
   const score = useScoreStore((state) => state.score);
   const targetId = useAdaptStore((state) => state.targetId);
   const options = useAdaptStore((state) => state.options);
+  const useChordKeys = useSettingsStore((state) => state.settings?.useChordKeys ?? true);
   const profile = useInstrumentStore((state) => state.entries.find((entry) => entry.profile.id === targetId)?.profile);
   const debouncedScore = useDebouncedValue(score, 100);
   const debouncedOptions = useDebouncedValue(options, 100);
 
   return useMemo(() => {
     if (!debouncedScore || !debouncedOptions || !profile) return { timeline: null, report: null, rates: {} };
-    const { timeline, report } = adapt(debouncedScore, profile, debouncedOptions);
+    const withChordSwitch = { ...debouncedOptions, useChordKeys };
+    const { timeline, report } = adapt(debouncedScore, profile, withChordSwitch);
     const rates: Record<string, number | null> = {};
     for (const track of debouncedScore.tracks) {
-      const single = adapt(debouncedScore, profile, { ...debouncedOptions, tracks: [track.id] });
+      const single = adapt(debouncedScore, profile, { ...withChordSwitch, tracks: [track.id] });
       rates[track.id] = single.report.total > 0 ? hitRate(single.report) : null;
     }
     return { timeline, report, rates };
-  }, [debouncedScore, debouncedOptions, profile]);
+  }, [debouncedScore, debouncedOptions, profile, useChordKeys]);
 }

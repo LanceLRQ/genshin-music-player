@@ -85,7 +85,7 @@ fn repeat_hits_middle_row_first_key_with_shrinking_intervals() {
         find_builtin_instrument("festive-drum").unwrap(),
         OPTIONS,
     );
-    assert_eq!(drum.presses[0].codes, vec!["KeyF"], "只有一行时取第一行");
+    assert_eq!(drum.presses[0].codes, vec!["KeyS"], "只有一行时取第一行");
 }
 
 #[test]
@@ -106,7 +106,7 @@ fn long_zigzags_through_keys_by_pitch_for_300_seconds() {
         OPTIONS,
     );
     let drum_codes = single_codes(&drum);
-    assert_eq!(&drum_codes[..4], &["KeyF", "KeyJ", "KeyF", "KeyJ"]);
+    assert_eq!(&drum_codes[..4], &["KeyS", "KeyA", "KeyS", "KeyA"]);
 }
 
 #[test]

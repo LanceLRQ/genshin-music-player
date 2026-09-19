@@ -66,6 +66,13 @@ pub struct Settings {
     /// 模拟发声：开启后"演奏"不向游戏发键，改由前端用合成音色播放；旧版 settings.json 没有该字段时补默认值
     #[serde(default)]
     pub simulate_sound: bool,
+    /// 和弦键匹配（M6）：关闭后和弦乐器不再使用和弦键，全部逐音按下；旧版 settings.json 没有该字段时补默认值 true
+    #[serde(default = "default_use_chord_keys")]
+    pub use_chord_keys: bool,
+}
+
+fn default_use_chord_keys() -> bool {
+    true
 }
 
 impl Default for Settings {
@@ -78,6 +85,7 @@ impl Default for Settings {
             default_humanize_ms: 0.0,
             write_execution_log: true,
             simulate_sound: false,
+            use_chord_keys: true,
         }
     }
 }

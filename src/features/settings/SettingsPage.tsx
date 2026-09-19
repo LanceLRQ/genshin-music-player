@@ -184,8 +184,18 @@ export function SettingsPage() {
                 onCheckedChange={(simulateSound) => update((base) => ({ ...base, simulateSound }))}
               />
             </Field>
+            <Field orientation="horizontal">
+              <FieldLabel className="w-40 shrink-0" htmlFor="set-chord">
+                和弦键匹配
+              </FieldLabel>
+              <Switch
+                id="set-chord"
+                checked={current.useChordKeys}
+                onCheckedChange={(useChordKeys) => update((base) => ({ ...base, useChordKeys }))}
+              />
+            </Field>
             <FieldDescription>
-              默认人性化在导入新乐谱时作为初始值。模拟发声开启后，"演奏"不再向游戏发送按键，改用本窗口的合成音色播放，全局热键也随之控制本窗口发声。
+              默认人性化在导入新乐谱时作为初始值。模拟发声开启后，"演奏"不再向游戏发送按键，改用本窗口的合成音色播放，全局热键也随之控制本窗口发声。和弦键匹配针对悠可琴、余音这类带和弦行的乐器：关闭后不再把同时发声的和弦收成一个和弦键，全部逐音按下。
             </FieldDescription>
           </FieldGroup>
         </CardContent>

@@ -42,5 +42,5 @@
       ]
     }
   ],
-  "timing": { "holdMs": 30, "minRepeatGapMs": 40, "sustain": false }
+  "timing": { "holdMs": 30, "minRepeatGapMs": 96, "sustain": false }
 }

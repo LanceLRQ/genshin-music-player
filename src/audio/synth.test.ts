@@ -31,8 +31,8 @@ describe('buildSoundMap', () => {
     const drum = builtin('festive-drum');
     const withExtraVoice = { ...drum, rows: [{ label: '鼓', keys: [...drum.rows[0].keys, { code: 'KeyK', voice: 'rim' }] }] };
     expect([...buildSoundMap(withExtraVoice)]).toEqual([
-      ['KeyF', { kind: 'don' }],
-      ['KeyJ', { kind: 'ka' }],
+      ['KeyS', { kind: 'don' }],
+      ['KeyA', { kind: 'ka' }],
       ['KeyK', { kind: 'ka' }],
     ]);
   });

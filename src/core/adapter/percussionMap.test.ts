@@ -32,8 +32,8 @@ describe('buildVoiceKeyMap', () => {
   it('返回音色到键码的映射', () => {
     const drum = BUILTIN_INSTRUMENTS.find((p) => p.id === 'festive-drum')!;
     expect([...buildVoiceKeyMap(drum)]).toEqual([
-      ['don', 'KeyF'],
-      ['ka', 'KeyJ'],
+      ['don', 'KeyS'],
+      ['ka', 'KeyA'],
     ]);
   });
 });

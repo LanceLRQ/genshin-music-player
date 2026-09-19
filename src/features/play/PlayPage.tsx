@@ -257,7 +257,8 @@ export function PlayPage() {
       .entries.find((entry) => entry.profile.id === useAdaptStore.getState().targetId)?.profile;
     const currentOptions = useAdaptStore.getState().options;
     if (!currentScore || !currentProfile || !currentOptions) return;
-    const single = adapt(currentScore, currentProfile, { ...currentOptions, tracks: [trackId] });
+    const useChordKeys = useSettingsStore.getState().settings?.useChordKeys ?? true;
+    const single = adapt(currentScore, currentProfile, { ...currentOptions, useChordKeys, tracks: [trackId] });
     // 模拟发声下与单独试听同语义：solo 标记必须记为 preview，否则 stopPreview / finishPreview
     // 不会触发 endSolo，单轨结束后标记与单轨 execution 会永久残留并污染后续演奏
     const soloMode: SoloMode = soundOnly() ? 'preview' : mode;
