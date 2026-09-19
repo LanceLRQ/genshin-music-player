@@ -84,7 +84,8 @@ fn builtin_layouts_keep_rows_pitches_and_timing() {
     assert_eq!(lyre.rows[0].keys[0].code, "KeyQ");
     assert_eq!(lyre.rows[0].keys[0].pitch, Some(72));
     assert_eq!(lyre.timing.hold_ms, 30.0);
-    assert_eq!(lyre.timing.min_repeat_gap_ms, 40.0);
+    // 2026-09-19 游戏内校准写回：60 帧最小可靠间隔 60ms + 25% 余量（清单 4.6）
+    assert_eq!(lyre.timing.min_repeat_gap_ms, 75.0);
 
     let two_row = find_builtin_instrument("two-row-prototype").unwrap();
     assert_eq!(two_row.rows[1].keys[5].code, "KeyN");
