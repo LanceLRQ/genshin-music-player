@@ -166,7 +166,7 @@ export class PreviewPlayer {
       for (const code of event.down) {
         const spec = session.sounds.get(code);
         if (!spec) continue;
-        const sustain = session.sustain && spec.kind === 'pluck';
+        const sustain = session.sustain && (spec.kind === 'pluck' || spec.kind === 'chord');
         const voice = playSound(context, master, spec, atSec, {
           sustain,
           onEnded: () => session.voices.delete(voice),
