@@ -194,18 +194,10 @@ export function InstrumentsPage() {
   };
 
   return (
-    <div className="flex min-h-0 flex-1">
-      <div className="flex w-72 shrink-0 flex-col gap-2 border-r p-4">
-        <div className="flex gap-2">
-          <Button variant="outline" size="sm" className="flex-1" onClick={() => requestLeave(startNew)}>
-            <FilePlus /> 新建
-          </Button>
-          <Button variant="outline" size="sm" className="flex-1" onClick={() => void requestLeave(() => void doImport())}>
-            <Upload /> 导入 JSON
-          </Button>
-        </div>
+    <div className="flex h-full min-h-0">
+      <div className="flex w-72 shrink-0 flex-col border-r p-4">
         {warnings.length > 0 && (
-          <Alert>
+          <Alert className="mb-2">
             <TriangleAlert />
             <AlertTitle>
               <button
@@ -228,8 +220,8 @@ export function InstrumentsPage() {
             )}
           </Alert>
         )}
-        <div className="flex min-h-0 flex-1 flex-col gap-1 overflow-auto">
-          <p className="px-2 pt-2 text-xs text-muted-foreground">内置</p>
+        <div className="flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto pr-1">
+          <p className="px-2 pt-1 text-xs text-muted-foreground">内置</p>
           {builtinEntries.map((entry) => renderItem(entry.profile))}
           <p className="px-2 pt-3 text-xs text-muted-foreground">自定义</p>
           {customEntries.length > 0 ? (
@@ -238,8 +230,16 @@ export function InstrumentsPage() {
             <p className="px-2 py-1 text-sm text-muted-foreground">还没有自定义乐器</p>
           )}
         </div>
+        <div className="mt-2 flex gap-2 border-t pt-3">
+          <Button variant="outline" size="sm" className="flex-1" onClick={() => requestLeave(startNew)}>
+            <FilePlus /> 新建
+          </Button>
+          <Button variant="outline" size="sm" className="flex-1" onClick={() => void requestLeave(() => void doImport())}>
+            <Upload /> 导入 JSON
+          </Button>
+        </div>
       </div>
-      <div className="min-w-0 flex-1 p-4">
+      <div className="flex min-w-0 flex-1 flex-col p-4">
         {editing ? (
           <InstrumentEditor
             key={editing.profile.id}
@@ -250,84 +250,84 @@ export function InstrumentsPage() {
             onDone={() => setEditing(null)}
           />
         ) : selected && (
-          <div className="flex flex-col gap-4">
-            <div className="flex flex-wrap items-start justify-between gap-3">
-              <div>
-                <h2 className="text-lg font-semibold">{selected.profile.name}</h2>
-                <p className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
-                  <span>{selected.builtin ? '内置' : '自定义'}</span>
-                  <span>·</span>
-                  <span>{selected.profile.kind === 'percussion' ? '敲击类' : '音高类'}</span>
-                  <Badge variant="secondary">{selected.profile.status === 'verified' ? '已验证' : '待实测'}</Badge>
-                  <span>·</span>
-                  <span className="font-mono text-xs">{selected.profile.id}</span>
-                </p>
-              </div>
-              <div className="flex flex-wrap gap-2">
-                {selected.builtin ? (
-                  <>
-                    <Button variant="outline" size="sm" onClick={() => void copyToCustom(selected.profile, true)}>
-                      <Copy /> 复制为自定义
-                    </Button>
-                    <Button variant="outline" size="sm" onClick={() => void exportProfile(selected.profile)}>
-                      <Download /> 导出 JSON
-                    </Button>
-                  </>
-                ) : (
-                  <>
-                    <Button size="sm" onClick={() => setEditing({ profile: selected.profile, saved: true })}>
-                      <Pencil /> 编辑
-                    </Button>
-                    <Button variant="outline" size="sm" onClick={() => void copyToCustom(selected.profile, false)}>
-                      <Copy /> 复制
-                    </Button>
-                    <Button variant="outline" size="sm" onClick={() => void exportProfile(selected.profile)}>
-                      <Download /> 导出 JSON
-                    </Button>
-                    <Button variant="outline" size="sm" onClick={() => setDeleteTarget(selected.profile)}>
-                      <Trash2 /> 删除
-                    </Button>
-                  </>
-                )}
-              </div>
+          <>
+            <div>
+              <h2 className="text-lg font-semibold">{selected.profile.name}</h2>
+              <p className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
+                <span>{selected.builtin ? '内置' : '自定义'}</span>
+                <span>·</span>
+                <span>{selected.profile.kind === 'percussion' ? '敲击类' : '音高类'}</span>
+                <Badge variant="secondary">{selected.profile.status === 'verified' ? '已验证' : '待实测'}</Badge>
+                <span>·</span>
+                <span className="font-mono text-xs">{selected.profile.id}</span>
+              </p>
             </div>
             {selected.profile.status === 'unverified' && (
-              <p className="text-sm text-muted-foreground">该乐器的键位和音高尚未在游戏中验证，可能与实际不符。</p>
+              <p className="mt-1 text-sm text-muted-foreground">该乐器的键位和音高尚未在游戏中验证，可能与实际不符。</p>
             )}
-            <Card>
-              <CardContent className="flex flex-col gap-3">
-                <p className="text-sm text-muted-foreground">虚拟琴键预览（点击试听）</p>
-                <KeycapPreview profile={selected.profile} />
-              </CardContent>
-            </Card>
-            <p className="flex items-center gap-1 text-sm text-muted-foreground">
-              <Timer className="size-4" />
-              按住时长 {selected.profile.timing.holdMs}ms · 最小重复间隔 {selected.profile.timing.minRepeatGapMs}ms ·{' '}
-              {selected.profile.timing.sustain ? '可持续发声' : '不可持续发声'}
-            </p>
-            {selected.profile.kind === 'percussion' && selected.profile.percussionMap && (
+            <div className="mt-3 flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto pr-1">
               <Card>
-                <CardContent className="flex flex-col gap-2">
-                  <p className="text-sm font-medium">鼓映射表</p>
-                  <div className="flex flex-col gap-1">
-                    {Object.entries(selected.profile.percussionMap.drumNotes).map(([note, voice]) => (
-                      <p key={note} className="flex gap-3 text-sm">
-                        <span className="w-16 font-mono">{note}</span>
-                        <span className="w-16">{voiceLabel(voice)}</span>
-                        <span className="text-muted-foreground">{midiToNoteName(Number(note))}</span>
-                      </p>
-                    ))}
-                  </div>
-                  <p className="text-sm text-muted-foreground">
-                    分界音高：
-                    {selected.profile.percussionMap.splitPitch === 'auto'
-                      ? '自动（中位数）'
-                      : midiToNoteName(selected.profile.percussionMap.splitPitch)}
-                  </p>
+                <CardContent className="flex flex-col gap-2 px-3 py-2">
+                  <p className="text-sm text-muted-foreground">虚拟琴键预览（点击试听）</p>
+                  <KeycapPreview profile={selected.profile} />
                 </CardContent>
               </Card>
-            )}
-          </div>
+              <p className="flex items-center gap-1 text-sm text-muted-foreground">
+                <Timer className="size-4" />
+                按住时长 {selected.profile.timing.holdMs}ms · 最小重复间隔 {selected.profile.timing.minRepeatGapMs}ms ·{' '}
+                {selected.profile.timing.sustain ? '可持续发声' : '不可持续发声'}
+              </p>
+              {selected.profile.kind === 'percussion' && selected.profile.percussionMap && (
+                <Card>
+                  <CardContent className="flex flex-col gap-2 px-3 py-2">
+                    <p className="text-sm font-medium">鼓映射表</p>
+                    <div className="flex flex-col gap-1">
+                      {Object.entries(selected.profile.percussionMap.drumNotes).map(([note, voice]) => (
+                        <p key={note} className="flex gap-3 text-sm">
+                          <span className="w-16 font-mono">{note}</span>
+                          <span className="w-16">{voiceLabel(voice)}</span>
+                          <span className="text-muted-foreground">{midiToNoteName(Number(note))}</span>
+                        </p>
+                      ))}
+                    </div>
+                    <p className="text-sm text-muted-foreground">
+                      分界音高：
+                      {selected.profile.percussionMap.splitPitch === 'auto'
+                        ? '自动（中位数）'
+                        : midiToNoteName(selected.profile.percussionMap.splitPitch)}
+                    </p>
+                  </CardContent>
+                </Card>
+              )}
+            </div>
+            <div className="mt-3 flex flex-wrap gap-2 border-t pt-3">
+              {selected.builtin ? (
+                <>
+                  <Button variant="outline" size="sm" onClick={() => void copyToCustom(selected.profile, true)}>
+                    <Copy /> 复制为自定义
+                  </Button>
+                  <Button variant="outline" size="sm" onClick={() => void exportProfile(selected.profile)}>
+                    <Download /> 导出 JSON
+                  </Button>
+                </>
+              ) : (
+                <>
+                  <Button size="sm" onClick={() => setEditing({ profile: selected.profile, saved: true })}>
+                    <Pencil /> 编辑
+                  </Button>
+                  <Button variant="outline" size="sm" onClick={() => void copyToCustom(selected.profile, false)}>
+                    <Copy /> 复制
+                  </Button>
+                  <Button variant="outline" size="sm" onClick={() => void exportProfile(selected.profile)}>
+                    <Download /> 导出 JSON
+                  </Button>
+                  <Button variant="outline" size="sm" onClick={() => setDeleteTarget(selected.profile)}>
+                    <Trash2 /> 删除
+                  </Button>
+                </>
+              )}
+            </div>
+          </>
         )}
       </div>
       <AlertDialog

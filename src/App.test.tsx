@@ -65,7 +65,8 @@ describe('App', () => {
     await waitFor(() => expect(useInstrumentStore.getState().status).toBe('ready'));
     expect(useSettingsStore.getState().settings).toEqual(DEFAULT_SETTINGS);
     expect(screen.getByText('模拟模式')).toBeInTheDocument();
-    expect(screen.getByText('F9')).toBeInTheDocument();
+    // 热键提示已移到演奏页控制条，侧边栏只保留后端/管理员状态一行
+    expect(screen.queryByText('F9')).not.toBeInTheDocument();
     expect(screen.getByText('导入乐谱开始')).toBeInTheDocument();
     expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument();
   });
@@ -87,7 +88,7 @@ describe('App', () => {
     expect(await screen.findByText('无法连接后端')).toBeInTheDocument();
     expect(screen.getByText('未连接后端')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: '演奏' })).toBeInTheDocument();
-    expect(useInstrumentStore.getState().entries).toHaveLength(5);
+    expect(useInstrumentStore.getState().entries).toHaveLength(12);
     expect(spy).not.toHaveBeenCalled();
   });
 

@@ -9,7 +9,6 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/components/ui/empty';
 import { Label } from '@/components/ui/label';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { Slider } from '@/components/ui/slider';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { useAppShortcuts } from '@/hooks/useAppShortcuts';
@@ -294,111 +293,130 @@ export function PlayPage() {
     <TooltipProvider delayDuration={100}>
       <div className="flex h-full min-h-0">
         {hasScore && (
-          <div className="w-[360px] shrink-0 border-r">
-            <ScrollArea className="h-full">
-              <div className="flex flex-col gap-3 p-4">
-                <div className="flex items-center justify-between gap-2">
-                  <span className="text-sm text-muted-foreground">乐谱</span>
-                  <div className="flex items-center gap-2">
-                    <ImportMenu disabled={locked} onOpenFile={() => void openScoreFile()} onPasteText={(tab) => setTextDialog({ tab })} />
-                    <Button variant="outline" size="sm" disabled={locked} onClick={() => void handleExport()}>
-                      导出 JSON 谱
-                    </Button>
-                  </div>
+          <div className="flex w-[360px] shrink-0 flex-col border-r">
+            <div className="flex flex-col gap-3 p-4 pb-0">
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-sm text-muted-foreground">乐谱</span>
+                <div className="flex items-center gap-2">
+                  <ImportMenu disabled={locked} onOpenFile={() => void openScoreFile()} onPasteText={(tab) => setTextDialog({ tab })} />
+                  <Button variant="outline" size="sm" disabled={locked} onClick={() => void handleExport()}>
+                    导出 JSON 谱
+                  </Button>
                 </div>
-                <Card>
-                  <CardHeader>
-                    <CardTitle>目标乐器</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <InstrumentSelect disabled={locked} onValueChange={handleTargetChange} />
-                  </CardContent>
-                </Card>
-                <TrackList
-                  tracks={score.tracks}
-                  checkedIds={checkedIds}
-                  rates={rates}
-                  pitched={profile.kind === 'pitched'}
-                  locked={locked}
-                  onSetChecked={(tracks) => useAdaptStore.getState().setOptions({ ...options, tracks })}
-                  onSolo={(mode, trackId) => void handleSolo(mode, trackId)}
-                />
-                <AdaptOptionsPanel
-                  profile={profile}
-                  options={options}
-                  manual={manual}
-                  locked={locked}
-                  onChange={(next) => useAdaptStore.getState().setOptions(next)}
-                  onReset={() => useAdaptStore.getState().resetToRecommended(score, profile, sourceInstrumentId ?? undefined)}
-                />
-                <AdaptReportCard report={report} hasTracks={checkedIds.length > 0} />
               </div>
-            </ScrollArea>
+              <Card>
+                <CardHeader className="px-3 py-2">
+                  <CardTitle className="text-sm">目标乐器</CardTitle>
+                </CardHeader>
+                <CardContent className="px-3 pb-3">
+                  <InstrumentSelect disabled={locked} onValueChange={handleTargetChange} />
+                </CardContent>
+              </Card>
+            </div>
+            <div className="min-h-0 flex-1 overflow-y-auto p-4">
+              <TrackList
+                tracks={score.tracks}
+                checkedIds={checkedIds}
+                rates={rates}
+                pitched={profile.kind === 'pitched'}
+                locked={locked}
+                onSetChecked={(tracks) => useAdaptStore.getState().setOptions({ ...options, tracks })}
+                onSolo={(mode, trackId) => void handleSolo(mode, trackId)}
+              />
+            </div>
+            <div className="border-t p-4 pt-3">
+              <AdaptReportCard report={report} hasTracks={checkedIds.length > 0} />
+            </div>
           </div>
         )}
-        <div className="flex min-w-0 flex-1 flex-col gap-4 p-4">
+        <div className="flex min-w-0 flex-1 flex-col gap-3 p-4 pb-0">
           {hasScore ? (
             <>
               <ScoreHeader score={score} />
               <VirtualKeyboard />
               <TimelineBar />
               <RangeControls locked={locked} />
-              <div className="flex flex-col gap-3">
-                <div className="flex items-center gap-3">
-                  <span className="w-14 shrink-0 text-sm">速度</span>
-                  <Slider
-                    className="flex-1"
-                    min={0.5}
-                    max={2}
-                    step={0.05}
-                    value={[speed]}
-                    disabled={locked}
-                    onValueChange={([next]) => useTransportStore.getState().setSpeed(next)}
+              <div className="grid min-h-0 flex-1 grid-cols-2 gap-3">
+                <div className="flex min-h-0 flex-col gap-3 overflow-y-auto pr-1">
+                  <AdaptOptionsPanel
+                    profile={profile}
+                    options={options}
+                    manual={manual}
+                    locked={locked}
+                    onChange={(next) => useAdaptStore.getState().setOptions(next)}
+                    onReset={() => useAdaptStore.getState().resetToRecommended(score, profile, sourceInstrumentId ?? undefined)}
                   />
-                  <span
-                    className="w-12 cursor-default text-right text-sm tabular-nums"
-                    title="双击恢复 1.00×"
-                    onDoubleClick={() => useTransportStore.getState().setSpeed(1)}
-                  >
-                    {formatSpeed(speed)}
-                  </span>
                 </div>
-                <div className="flex items-center gap-3">
-                  <span className="w-14 shrink-0 text-sm">人性化</span>
-                  <Slider
-                    className="flex-1"
-                    min={0}
-                    max={30}
-                    step={1}
-                    value={[humanizeMs]}
-                    disabled={locked}
-                    onValueChange={([next]) => useTransportStore.getState().setHumanizeMs(next)}
-                  />
-                  <span className="w-12 text-right text-sm tabular-nums">{humanizeMs} ms</span>
-                </div>
-                <div className="flex items-center gap-3">
-                  <Label className="w-14 shrink-0 text-sm">音量</Label>
-                  <Slider
-                    className="flex-1"
-                    min={0}
-                    max={100}
-                    step={1}
-                    value={[Math.round(volume * 100)]}
-                    onValueChange={([next]) => useTransportStore.getState().setVolume(next / 100)}
-                  />
-                  <span className="w-12 text-right text-sm tabular-nums">{Math.round(volume * 100)}%</span>
-                </div>
-                <OutputDeviceSelect />
+                <Card className="min-h-0 overflow-hidden">
+                  <CardHeader className="px-3 py-2">
+                    <CardTitle className="text-sm">演奏控制</CardTitle>
+                  </CardHeader>
+                  <CardContent className="min-h-0 overflow-y-auto px-3 pb-3">
+                    <div className="flex flex-col gap-3">
+                      <div className="flex items-center gap-3">
+                        <span className="w-14 shrink-0 text-sm">速度</span>
+                        <Slider
+                          className="flex-1"
+                          min={0.5}
+                          max={2}
+                          step={0.05}
+                          value={[speed]}
+                          disabled={locked}
+                          onValueChange={([next]) => useTransportStore.getState().setSpeed(next)}
+                        />
+                        <span
+                          className="w-12 cursor-default text-right text-sm tabular-nums"
+                          title="双击恢复 1.00×"
+                          onDoubleClick={() => useTransportStore.getState().setSpeed(1)}
+                        >
+                          {formatSpeed(speed)}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <span className="w-14 shrink-0 text-sm">人性化</span>
+                        <Slider
+                          className="flex-1"
+                          min={0}
+                          max={30}
+                          step={1}
+                          value={[humanizeMs]}
+                          disabled={locked}
+                          onValueChange={([next]) => useTransportStore.getState().setHumanizeMs(next)}
+                        />
+                        <span className="w-12 text-right text-sm tabular-nums">{humanizeMs} ms</span>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <Label className="w-14 shrink-0 text-sm">音量</Label>
+                        <Slider
+                          className="flex-1"
+                          min={0}
+                          max={100}
+                          step={1}
+                          value={[Math.round(volume * 100)]}
+                          onValueChange={([next]) => useTransportStore.getState().setVolume(next / 100)}
+                        />
+                        <span className="w-12 text-right text-sm tabular-nums">{Math.round(volume * 100)}%</span>
+                      </div>
+                      <OutputDeviceSelect />
+                    </div>
+                  </CardContent>
+                </Card>
               </div>
-              <TransportBar
-                soloTrackName={solo ? (score.tracks.find((track) => track.id === solo.trackId)?.name ?? null) : null}
-                onPreviewToggle={handlePreviewToggle}
-                onPlay={() => void handlePlay()}
-                onPause={() => void useTransportStore.getState().pause()}
-                onStop={handleStop}
-                onSoloCancel={handleSoloCancel}
-              />
-              <SummaryLine />
+              <div className="sticky bottom-0 -mx-4 flex flex-wrap items-center gap-3 border-t bg-background/95 px-4 py-3 backdrop-blur">
+                <div className="min-w-0 flex-1">
+                  <TransportBar
+                    soloTrackName={solo ? (score.tracks.find((track) => track.id === solo.trackId)?.name ?? null) : null}
+                    onPreviewToggle={handlePreviewToggle}
+                    onPlay={() => void handlePlay()}
+                    onPause={() => void useTransportStore.getState().pause()}
+                    onStop={handleStop}
+                    onSoloCancel={handleSoloCancel}
+                  />
+                </div>
+                <div className="min-w-0 shrink-0">
+                  <SummaryLine />
+                </div>
+              </div>
             </>
           ) : (
             <Empty className="flex-1 justify-center rounded-xl border border-dashed">

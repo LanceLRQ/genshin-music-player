@@ -1,0 +1,40 @@
+{
+  "schemaVersion": 1,
+  "id": "juju-drum",
+  "name": "聚聚鼓",
+  "kind": "percussion",
+  "status": "unverified",
+  "rows": [
+    {
+      "label": "上排",
+      "keys": [
+        { "voice": "don", "code": "KeyQ" },
+        { "voice": "ka", "code": "KeyI" }
+      ]
+    },
+    {
+      "label": "下排",
+      "keys": [
+        { "voice": "don-2", "code": "KeyA" },
+        { "voice": "ka-2", "code": "KeyK" }
+      ]
+    }
+  ],
+  "timing": { "holdMs": 30, "minRepeatGapMs": 40, "sustain": false },
+  "percussionMap": {
+    "drumNotes": {
+      "35": "don",
+      "36": "don-2",
+      "37": "ka",
+      "38": "ka-2",
+      "40": "ka",
+      "42": "ka-2",
+      "44": "ka",
+      "46": "ka-2",
+      "49": "ka",
+      "51": "ka-2",
+      "57": "don"
+    },
+    "splitPitch": "auto"
+  }
+}

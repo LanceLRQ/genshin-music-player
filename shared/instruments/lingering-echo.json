@@ -1,20 +1,20 @@
 {
   "schemaVersion": 1,
-  "id": "windsong-lyre",
-  "name": "风物之诗琴",
+  "id": "lingering-echo",
+  "name": "余音",
   "kind": "pitched",
-  "status": "verified",
+  "status": "unverified",
   "rows": [
     {
-      "label": "高音",
+      "label": "和弦",
       "keys": [
-        { "pitch": 72, "code": "KeyQ" },
-        { "pitch": 74, "code": "KeyW" },
-        { "pitch": 76, "code": "KeyE" },
-        { "pitch": 77, "code": "KeyR" },
-        { "pitch": 79, "code": "KeyT" },
-        { "pitch": 81, "code": "KeyY" },
-        { "pitch": 83, "code": "KeyU" }
+        { "chord": [48, 52, 55], "label": "C", "code": "KeyQ" },
+        { "chord": [50, 53, 57], "label": "Dm", "code": "KeyW" },
+        { "chord": [52, 55, 59], "label": "Em", "code": "KeyE" },
+        { "chord": [53, 57, 60], "label": "F", "code": "KeyR" },
+        { "chord": [55, 59, 62], "label": "G", "code": "KeyT" },
+        { "chord": [57, 60, 64], "label": "Am", "code": "KeyY" },
+        { "chord": [59, 62, 65], "label": "Bdim", "code": "KeyU" }
       ]
     },
     {
@@ -42,5 +42,5 @@
       ]
     }
   ],
-  "timing": { "holdMs": 30, "minRepeatGapMs": 75, "sustain": false }
+  "timing": { "holdMs": 30, "minRepeatGapMs": 40, "sustain": false }
 }

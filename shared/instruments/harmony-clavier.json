@@ -1,9 +1,9 @@
 {
   "schemaVersion": 1,
-  "id": "windsong-lyre",
-  "name": "风物之诗琴",
+  "id": "harmony-clavier",
+  "name": "谐律键琴",
   "kind": "pitched",
-  "status": "verified",
+  "status": "unverified",
   "rows": [
     {
       "label": "高音",
@@ -42,5 +42,5 @@
       ]
     }
   ],
-  "timing": { "holdMs": 30, "minRepeatGapMs": 75, "sustain": false }
+  "timing": { "holdMs": 30, "minRepeatGapMs": 40, "sustain": false }
 }

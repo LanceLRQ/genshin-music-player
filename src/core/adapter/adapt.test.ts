@@ -26,7 +26,7 @@ describe('adapt：音高类乐器', () => {
     expect(result.timeline).toEqual({
       instrumentId: 'windsong-lyre',
       durationMs: 530,
-      minRepeatGapMs: 40,
+      minRepeatGapMs: 75,
       presses: [
         { tMs: 0, codes: ['KeyA'], holdMs: 30 },
         { tMs: 500, codes: ['KeyS'], holdMs: 30 },
@@ -184,5 +184,45 @@ describe('adapt：敲击类乐器', () => {
   it('敲击类乐器不应用移调', () => {
     const result = adapt(scoreOf(track('t0', [note(0, 36)], true)), drum, options({ transpose: 5 }));
     expect(codesOf(result)).toEqual([['KeyF']]);
+  });
+});
+
+describe('adapt：和弦键匹配（M6）', () => {
+  const chordLyre = {
+    ...structuredClone(lyre),
+    rows: [
+      {
+        label: '和弦',
+        keys: [
+          { chord: [48, 52, 55], label: 'C', code: 'KeyQ' },
+          { chord: [50, 53, 57], label: 'Dm', code: 'KeyW' },
+        ],
+      },
+      ...lyre.rows,
+    ],
+  } as typeof lyre;
+
+  it('C 大三和弦簇收成一个和弦键', () => {
+    const result = adapt(
+      scoreOf(track('t0', [note(0, 60), note(0, 64), note(0, 67)])),
+      chordLyre,
+      options(),
+    );
+    expect(result.timeline.presses).toHaveLength(1);
+    expect(result.timeline.presses[0].codes).toEqual(['KeyQ']);
+  });
+
+  it('D 小三和弦簇命中 Dm 键；单音与二音组不受影响', () => {
+    const dm = adapt(scoreOf(track('t0', [note(0, 62), note(0, 65), note(0, 69)])), chordLyre, options());
+    expect(dm.timeline.presses[0]?.codes).toEqual(['KeyW']);
+    const single = adapt(scoreOf(track('t0', [note(0, 60)])), chordLyre, options());
+    expect(single.timeline.presses[0]?.codes).toEqual(['KeyA']);
+    const dyad = adapt(scoreOf(track('t0', [note(0, 60), note(0, 64)])), chordLyre, options());
+    expect(dyad.timeline.presses[0]?.codes).toHaveLength(2);
+  });
+
+  it('不匹配的簇回退逐音映射', () => {
+    const off = adapt(scoreOf(track('t0', [note(0, 60), note(0, 62), note(0, 64)])), chordLyre, options());
+    expect(off.timeline.presses[0]?.codes.length).toBeGreaterThan(1);
   });
 });

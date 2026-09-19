@@ -1,15 +1,11 @@
 import { keyLabel } from '@/core/model/keycodes';
+import { voiceLabel } from '@/core/model/instrument';
 import type { InstrumentProfile } from '@/core/model/instrument';
 import { midiToNoteName, noteNameToMidi } from '@/core/music/pitch';
 import { previewPlayer } from '@/audio/previewPlayer';
 import { cn } from '@/lib/utils';
 
-const VOICE_LABELS: Record<string, string> = { don: '咚', ka: '咔' };
-
-/** 敲击乐器的音色显示名：don → 咚、ka → 咔，其余原样 */
-export function voiceLabel(voice: string): string {
-  return VOICE_LABELS[voice] ?? voice;
-}
+export { voiceLabel };
 
 /** 音高输入解析：'61' / 'C#4' / 'c4' → MIDI 音高号；非法或超出 0–127 时返回 undefined */
 export function parsePitchInput(text: string): number | undefined {
@@ -45,9 +41,11 @@ export function KeycapPreview({ profile, className }: KeycapPreviewProps) {
                 <span className="text-xs text-muted-foreground">
                   {profile.kind === 'percussion'
                     ? voiceLabel(instrumentKey.voice ?? '')
-                    : instrumentKey.pitch === undefined
-                      ? '—'
-                      : midiToNoteName(instrumentKey.pitch)}
+                    : instrumentKey.chord !== undefined
+                      ? (instrumentKey.label ?? '和弦')
+                      : instrumentKey.pitch === undefined
+                        ? '—'
+                        : midiToNoteName(instrumentKey.pitch)}
                 </span>
               </button>
             ))}

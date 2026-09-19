@@ -1,6 +1,5 @@
 import { type LucideIcon, Music, PanelLeft, Piano, Settings } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Kbd } from '@/components/ui/kbd';
 import {
   Sidebar,
   SidebarContent,
@@ -13,12 +12,10 @@ import {
   SidebarMenuItem,
   useSidebar,
 } from '@/components/ui/sidebar';
-import { guessPlatform, displayShortcut } from '@/lib/shortcuts';
 import { STATUS_DOT_CLASS, isPlayerActive, playerStateLabel, playerStateTone } from '@/lib/playerStatus';
 import { cn } from '@/lib/utils';
 import { useEnvStore } from '@/stores/envStore';
 import { type PageId, useNavigationStore } from '@/stores/navigationStore';
-import { useSettingsStore } from '@/stores/settingsStore';
 import { useTransportStore } from '@/stores/transportStore';
 
 const NAV_ITEMS: { page: PageId; label: string; icon: LucideIcon }[] = [
@@ -60,36 +57,19 @@ function BackendStatus() {
     );
   }
   return (
-    <div className="flex flex-col gap-1">
-      <div className="flex items-center gap-2">
-        <StatusDot className={env.backend === 'windows' ? STATUS_DOT_CLASS.green : STATUS_DOT_CLASS.gray} />
-        <span>{env.backend === 'windows' ? 'Windows' : '模拟模式'}</span>
-      </div>
-      {env.platform === 'windows' && <span className="pl-4">管理员 {env.elevated ? '✓' : '✗'}</span>}
+    <div className="flex items-center gap-2">
+      <StatusDot className={env.backend === 'windows' ? STATUS_DOT_CLASS.green : STATUS_DOT_CLASS.gray} />
+      <span>{env.backend === 'windows' ? 'Windows' : '模拟模式'}</span>
+      {env.platform === 'windows' && (
+        <span className={cn('truncate', !env.elevated && 'font-medium text-destructive')}>
+          管理员 {env.elevated ? '✓' : '✗'}
+        </span>
+      )}
     </div>
   );
 }
 
-function HotkeyHints() {
-  const hotkeys = useSettingsStore((state) => state.settings?.hotkeys);
-  const envPlatform = useEnvStore((state) => state.env?.platform);
-  if (!hotkeys) return null;
-  const platform = envPlatform ?? guessPlatform(navigator.userAgent);
-  return (
-    <div className="flex flex-col gap-1">
-      <div className="flex items-center gap-2">
-        <Kbd>{displayShortcut(hotkeys.toggle, platform)}</Kbd>
-        <span>开始/暂停</span>
-      </div>
-      <div className="flex items-center gap-2">
-        <Kbd>{displayShortcut(hotkeys.stop, platform)}</Kbd>
-        <span>停止</span>
-      </div>
-    </div>
-  );
-}
-
-/** 左侧边栏：三个页面入口；底部显示后端状态、管理员状态和全局热键 */
+/** 左侧边栏：三个页面入口；底部一行显示后端与管理员状态 */
 export function AppSidebar() {
   const page = useNavigationStore((state) => state.page);
   const navigate = useNavigationStore((state) => state.navigate);
@@ -127,9 +107,8 @@ export function AppSidebar() {
           </SidebarGroupContent>
         </SidebarGroup>
       </SidebarContent>
-      <SidebarFooter className="gap-3 p-4 text-xs text-muted-foreground group-data-[collapsible=icon]:hidden">
+      <SidebarFooter className="p-4 text-xs text-muted-foreground group-data-[collapsible=icon]:hidden">
         <BackendStatus />
-        <HotkeyHints />
       </SidebarFooter>
     </Sidebar>
   );

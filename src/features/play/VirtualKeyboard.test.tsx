@@ -50,6 +50,23 @@ describe('VirtualKeyboard', () => {
     expect(previewPlayer.playKey).toHaveBeenCalledWith(lyre, 'KeyQ');
   });
 
+  it('和弦乐器的和弦键显示和弦名，鼓键显示中文音色（含序号变体）', () => {
+    const guitar = BUILTIN_INSTRUMENTS.find((profile) => profile.id === 'yuco-lyre')!;
+    const banquet = BUILTIN_INSTRUMENTS.find((profile) => profile.id === 'banquet-drum')!;
+    useAdaptStore.setState({ targetId: 'yuco-lyre' });
+    const { unmount } = render(<VirtualKeyboard />);
+    expect(screen.getByRole('button', { name: '键帽 Q C' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '键帽 W Dm' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '键帽 A C4' })).toBeInTheDocument();
+    unmount();
+    useAdaptStore.setState({ targetId: 'banquet-drum' });
+    render(<VirtualKeyboard />);
+    expect(screen.getByRole('button', { name: '键帽 Q 咚' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '键帽 W 咚-2' })).toBeInTheDocument();
+    expect(guitar.rows[0].keys[0].chord).toEqual([48, 52, 55]);
+    expect(banquet.rows[0].keys[1].voice).toBe('don-2');
+  });
+
   it('演奏进行中键帽禁用且点击无效', async () => {
     useTransportStore.setState({ playerState: { kind: 'playing' } });
     const user = userEvent.setup();

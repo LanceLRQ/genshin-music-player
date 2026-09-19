@@ -1,9 +1,9 @@
 {
   "schemaVersion": 1,
   "id": "two-row-prototype",
-  "name": "两行乐器（开发中）",
+  "name": "沃雅妮莎",
   "kind": "pitched",
-  "status": "unverified",
+  "status": "verified",
   "rows": [
     {
       "label": "高音谱号",

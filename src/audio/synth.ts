@@ -1,7 +1,11 @@
 import type { InstrumentProfile } from '@/core/model/instrument';
 
-/** 一个键发出的声音：音高类为拨弦，敲击类"咚"为低频正弦，其余音色统一用"咔"的短噪声 */
-export type SoundSpec = { kind: 'pluck'; frequency: number } | { kind: 'don' } | { kind: 'ka' };
+/** 一个键发出的声音：音高类为拨弦，和弦键同时发构成音，敲击类"咚"为低频正弦，其余音色统一用"咔"的短噪声 */
+export type SoundSpec =
+  | { kind: 'pluck'; frequency: number }
+  | { kind: 'chord'; frequencies: number[] }
+  | { kind: 'don' }
+  | { kind: 'ka' };
 
 export function midiToFrequency(pitch: number): number {
   return 440 * 2 ** ((pitch - 69) / 12);
@@ -13,6 +17,7 @@ export function buildSoundMap(profile: InstrumentProfile): Map<string, SoundSpec
   for (const row of profile.rows) {
     for (const key of row.keys) {
       if (key.pitch !== undefined) sounds.set(key.code, { kind: 'pluck', frequency: midiToFrequency(key.pitch) });
+      else if (key.chord) sounds.set(key.code, { kind: 'chord', frequencies: key.chord.map(midiToFrequency) });
       else sounds.set(key.code, key.voice === 'don' ? { kind: 'don' } : { kind: 'ka' });
     }
   }
@@ -68,20 +73,28 @@ export function playSound(
   output.connect(destination);
   const sources: AudioScheduledSourceNode[] = [];
   let released = false;
+  // 自然衰减类的停止时刻；必须先 start 再 stop，顺序反了会抛 InvalidStateError 并中断整个排程循环
+  let autoStopSec: number | null = null;
 
-  if (spec.kind === 'pluck') {
-    // 三角波 + 音量 30% 的二倍频正弦波，起音 5ms
-    const fundamental = context.createOscillator();
-    fundamental.type = 'triangle';
-    fundamental.frequency.setValueAtTime(spec.frequency, atSec);
-    const overtone = context.createOscillator();
-    overtone.type = 'sine';
-    overtone.frequency.setValueAtTime(spec.frequency * 2, atSec);
-    const overtoneGain = context.createGain();
-    overtoneGain.gain.value = 0.3;
-    fundamental.connect(output);
-    overtone.connect(overtoneGain).connect(output);
-    sources.push(fundamental, overtone);
+  if (spec.kind === 'pluck' || spec.kind === 'chord') {
+    // 三角波 + 音量 30% 的二倍频正弦波，起音 5ms；和弦各构成音均分增益，避免叠加削波
+    const frequencies = spec.kind === 'chord' ? spec.frequencies : [spec.frequency];
+    const noteGain = spec.kind === 'chord' ? 1 / spec.frequencies.length : 1;
+    for (const frequency of frequencies) {
+      const fundamental = context.createOscillator();
+      fundamental.type = 'triangle';
+      fundamental.frequency.setValueAtTime(frequency, atSec);
+      const fundamentalGain = context.createGain();
+      fundamentalGain.gain.value = noteGain;
+      fundamental.connect(fundamentalGain).connect(output);
+      const overtone = context.createOscillator();
+      overtone.type = 'sine';
+      overtone.frequency.setValueAtTime(frequency * 2, atSec);
+      const overtoneGain = context.createGain();
+      overtoneGain.gain.value = 0.3 * noteGain;
+      overtone.connect(overtoneGain).connect(output);
+      sources.push(fundamental, overtone);
+    }
 
     output.gain.setValueAtTime(SILENT_GAIN, atSec);
     if (options.sustain) {
@@ -89,7 +102,7 @@ export function playSound(
     } else {
       output.gain.exponentialRampToValueAtTime(PEAK_GAIN, atSec + PLUCK_ATTACK_SEC);
       output.gain.exponentialRampToValueAtTime(SILENT_GAIN, atSec + PLUCK_ATTACK_SEC + PLUCK_DECAY_SEC);
-      for (const source of sources) source.stop(atSec + PLUCK_ATTACK_SEC + PLUCK_DECAY_SEC);
+      autoStopSec = atSec + PLUCK_ATTACK_SEC + PLUCK_DECAY_SEC;
     }
   } else if (spec.kind === 'don') {
     // 正弦波，150ms 内从 90Hz 降到 50Hz，同时音量衰减
@@ -101,7 +114,7 @@ export function playSound(
     sources.push(oscillator);
     output.gain.setValueAtTime(PEAK_GAIN * 2, atSec);
     output.gain.exponentialRampToValueAtTime(SILENT_GAIN, atSec + DON_SWEEP_SEC);
-    oscillator.stop(atSec + DON_SWEEP_SEC);
+    autoStopSec = atSec + DON_SWEEP_SEC;
   } else {
     // 白噪声经中心 2kHz 的带通滤波，持续 60ms
     const noise = context.createBufferSource();
@@ -113,10 +126,11 @@ export function playSound(
     sources.push(noise);
     output.gain.setValueAtTime(PEAK_GAIN * 2, atSec);
     output.gain.exponentialRampToValueAtTime(SILENT_GAIN, atSec + KA_DURATION_SEC);
-    noise.stop(atSec + KA_DURATION_SEC);
+    autoStopSec = atSec + KA_DURATION_SEC;
   }
 
   for (const source of sources) source.start(atSec);
+  if (autoStopSec !== null) for (const source of sources) source.stop(autoStopSec);
   sources[0].onended = () => {
     output.disconnect();
     options.onEnded?.();
@@ -124,7 +138,7 @@ export function playSound(
 
   return {
     release: (releaseSec) => {
-      if (spec.kind !== 'pluck' || !options.sustain || released) return;
+      if ((spec.kind !== 'pluck' && spec.kind !== 'chord') || !options.sustain || released) return;
       released = true;
       const from = Math.max(releaseSec, atSec + PLUCK_ATTACK_SEC);
       output.gain.cancelScheduledValues(from);

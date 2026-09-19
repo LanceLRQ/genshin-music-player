@@ -70,8 +70,9 @@ describe('InstrumentsPage 列表与详情', () => {
     expect(screen.getByText('还没有自定义乐器')).toBeInTheDocument();
     // 乐器名称同样在列表项与详情标题各出现一次
     expect(screen.getAllByText('风物之诗琴')).toHaveLength(2);
-    expect(screen.getByText('节庆鼓')).toBeInTheDocument();
-    expect(screen.getAllByText('敲击')).toHaveLength(1);
+    expect(screen.getByText('荒泷·盛世豪鼓')).toBeInTheDocument();
+    // 三件敲击类：荒泷·盛世豪鼓、聚聚鼓、绮筵之鼓
+    expect(screen.getAllByText('敲击')).toHaveLength(3);
     expect(screen.getAllByText('待实测').length).toBeGreaterThanOrEqual(3);
   });
 
@@ -82,14 +83,14 @@ describe('InstrumentsPage 列表与详情', () => {
     expect(screen.getByText('已验证')).toBeInTheDocument();
     expect(screen.getByText('windsong-lyre')).toBeInTheDocument();
     expect(screen.getByText('虚拟琴键预览（点击试听）')).toBeInTheDocument();
-    expect(screen.getByText('按住时长 30ms · 最小重复间隔 40ms · 不可持续发声')).toBeInTheDocument();
+    expect(screen.getByText('按住时长 30ms · 最小重复间隔 75ms · 不可持续发声')).toBeInTheDocument();
     await user.click(screen.getByText('C5'));
     expect(previewPlayer.playKey).toHaveBeenCalled();
   });
 
   it('敲击乐器显示只读鼓映射表与分界音高', async () => {
     const { user } = await renderPage();
-    await user.click(screen.getByText('节庆鼓'));
+    await user.click(screen.getByText('荒泷·盛世豪鼓'));
     expect(screen.getByText('鼓映射表')).toBeInTheDocument();
     // GM 默认映射 35、36 都是咚：鼓映射表贡献 2 个，键帽预览（KeyF → don）再贡献 1 个
     expect(screen.getAllByText('咚')).toHaveLength(3);

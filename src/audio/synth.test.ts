@@ -19,6 +19,14 @@ describe('buildSoundMap', () => {
     expect(sounds.get('KeyH')).toEqual({ kind: 'pluck', frequency: 440 });
   });
 
+  it('和弦键的试听声包含全部构成音', () => {
+    const sounds = buildSoundMap(builtin('yuco-lyre'));
+    expect(sounds.get('KeyQ')).toEqual({
+      kind: 'chord',
+      frequencies: [48, 52, 55].map(midiToFrequency),
+    });
+  });
+
   it('敲击类乐器：don 为"咚"，其他音色统一为"咔"', () => {
     const drum = builtin('festive-drum');
     const withExtraVoice = { ...drum, rows: [{ label: '鼓', keys: [...drum.rows[0].keys, { code: 'KeyK', voice: 'rim' }] }] };

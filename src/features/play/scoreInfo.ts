@@ -49,10 +49,8 @@ export function sourceLabel(source: ScoreSource): string {
   return SOURCE_LABELS[source];
 }
 
-/** 敲击音色的显示名（设计 01 第 4.7 节：don 显示"咚"，ka 显示"咔"，其他音色原样显示） */
-export function voiceLabel(voice: string): string {
-  return voice === 'don' ? '咚' : voice === 'ka' ? '咔' : voice;
-}
+/** 敲击音色的显示名（设计 01 第 4.7 节）：don 显示"咚"、ka 显示"咔"，含带序号变体，其他原样 */
+export { voiceLabel } from '@/core/model/instrument';
 
 export type TextFormat = 'keyscore' | 'jianpu';
 

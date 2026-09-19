@@ -12,6 +12,17 @@ export const InstrumentKeySchema = z.object(
       .min(0, '音高不能小于 0')
       .max(127, '音高不能大于 127')
       .optional(),
+    /** 和弦键：构成音 MIDI 音高（升序、≥2 音）；与 pitch 二选一 */
+    chord: z
+      .array(
+        z.number({ message: '和弦构成音必须是数字' }).int('和弦构成音必须是整数').min(0).max(127),
+        { message: '和弦必须是数组' },
+      )
+      .min(2, '和弦至少需要 2 个音')
+      .max(7, '和弦最多 7 个音')
+      .optional(),
+    /** 和弦键的显示名，如 "C"、"Dm" */
+    label: z.string({ message: '和弦名必须是文本' }).min(1, '和弦名不能为空').optional(),
     voice: z.string({ message: '音色必须是文本' }).min(1, '音色不能为空').optional(),
   },
   { message: '键位配置必须是对象' },
@@ -108,9 +119,23 @@ export const InstrumentProfileSchema = z
 
         if (profile.kind === 'pitched') {
           if (key.voice !== undefined) report([...at, 'voice'], '音高类乐器的键不能有 voice');
-          if (key.pitch === undefined) report([...at, 'pitch'], '音高类乐器的键必须有 pitch');
-          else if (pitches.has(key.pitch)) report([...at, 'pitch'], `音高 ${key.pitch} 重复`);
-          else pitches.add(key.pitch);
+          const hasPitch = key.pitch !== undefined;
+          const hasChord = key.chord !== undefined;
+          if (hasPitch && hasChord) report([...at, 'chord'], '同一个键的 pitch 与 chord 只能二选一');
+          else if (!hasPitch && !hasChord) report([...at, 'pitch'], '音高类乐器的键必须有 pitch 或 chord');
+          else if (hasPitch) {
+            if (pitches.has(key.pitch!)) report([...at, 'pitch'], `音高 ${key.pitch} 重复`);
+            else pitches.add(key.pitch!);
+          } else {
+            if (key.label === undefined) report([...at, 'label'], '和弦键必须有 label（和弦名）');
+            const notes = key.chord!;
+            for (let i = 1; i < notes.length; i++) {
+              if (notes[i] <= notes[i - 1]) {
+                report([...at, 'chord'], '和弦构成音必须严格升序且不重复');
+                break;
+              }
+            }
+          }
         } else {
           if (key.pitch !== undefined) report([...at, 'pitch'], '敲击类乐器的键不能有 pitch');
           if (key.voice === undefined) report([...at, 'voice'], '敲击类乐器的键必须有 voice');
@@ -129,6 +154,14 @@ export const InstrumentProfileSchema = z
 
 export type InstrumentKey = z.infer<typeof InstrumentKeySchema>;
 export type InstrumentProfile = z.infer<typeof InstrumentProfileSchema>;
+
+/** 敲击音色的显示名：don → 咚、ka → 咔（含 don-2 等带序号的变体，多键鼓会用），其余原样 */
+export function voiceLabel(voice: string): string {
+  const match = /^(don|ka)(?:-(\d+))?$/.exec(voice);
+  if (!match) return voice;
+  const base = match[1] === 'don' ? '咚' : '咔';
+  return match[2] ? `${base}-${match[2]}` : base;
+}
 
 export type ValidationResult<T> = { ok: true; value: T } | { ok: false; errors: string[] };
 
