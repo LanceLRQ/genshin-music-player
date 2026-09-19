@@ -77,7 +77,7 @@ describe('validateInstrumentProfile', () => {
   it('音高类乐器的键缺少 pitch 时报错', () => {
     const profile = pitchedProfile();
     delete (profile.rows[0].keys[1] as { pitch?: number }).pitch;
-    expect(errorsOf(profile)).toContain('rows.0.keys.1.pitch：音高类乐器的键必须有 pitch');
+    expect(errorsOf(profile)).toContain('rows.0.keys.1.pitch：音高类乐器的键必须有 pitch 或 chord');
   });
 
   it('音高重复时报错', () => {
@@ -151,5 +151,32 @@ describe('validateInstrumentProfile', () => {
     const result = validateInstrumentProfile(profile);
     expect(result.ok).toBe(true);
     if (result.ok) expect(result.value.percussionMap?.drumNotes).toEqual({ '36': 'ka' });
+  });
+});
+
+describe('和弦键校验（M6）', () => {
+  it('合法和弦键通过，与单音键混合', () => {
+    const profile = pitchedProfile();
+    (profile.rows[0].keys[1] as { chord?: number[]; label?: string; pitch?: number }).chord = [48, 52, 55];
+    (profile.rows[0].keys[1] as { label?: string }).label = 'C';
+    delete (profile.rows[0].keys[1] as { pitch?: number }).pitch;
+    expect(errorsOf(profile)).toEqual([]);
+  });
+
+  it('和弦键缺 label、pitch 与 chord 同填、非升序分别报错', () => {
+    const noLabel = pitchedProfile();
+    (noLabel.rows[0].keys[0] as { chord?: number[]; pitch?: number }).chord = [60, 64];
+    delete (noLabel.rows[0].keys[0] as { pitch?: number }).pitch;
+    expect(errorsOf(noLabel)).toContain('rows.0.keys.0.label：和弦键必须有 label（和弦名）');
+
+    const both = pitchedProfile();
+    (both.rows[0].keys[0] as { chord?: number[] }).chord = [60, 64];
+    expect(errorsOf(both)).toContain('rows.0.keys.0.chord：同一个键的 pitch 与 chord 只能二选一');
+
+    const unsorted = pitchedProfile();
+    (unsorted.rows[0].keys[0] as { chord?: number[]; pitch?: number; label?: string }).chord = [64, 60];
+    (unsorted.rows[0].keys[0] as { label?: string }).label = 'C';
+    delete (unsorted.rows[0].keys[0] as { pitch?: number }).pitch;
+    expect(errorsOf(unsorted)).toContain('rows.0.keys.0.chord：和弦构成音必须严格升序且不重复');
   });
 });
