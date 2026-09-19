@@ -38,7 +38,7 @@ function setShortcutValue(base: Settings, field: ShortcutField, value: string): 
   return { ...base, shortcuts: { ...base.shortcuts, [key]: value } };
 }
 
-/** 设置页：六个分组的显式保存表单，底部操作栏只在有未保存修改时出现 */
+/** 设置页：六个分组的显式保存表单，底部操作栏常驻，未修改时按钮禁用以避免高度跳动 */
 export function SettingsPage() {
   const settings = useSettingsStore((state) => state.settings);
   const draft = useSettingsStore((state) => state.draft);
@@ -255,7 +255,10 @@ export function SettingsPage() {
             </Field>
             <Field orientation="horizontal">
               <FieldLabel className="w-40 shrink-0">日志目录</FieldLabel>
-              <span className="font-mono text-sm text-muted-foreground">{env?.logsDir ?? '—'}</span>
+              {/* 长路径截断显示，悬停看全路径，避免无空格的 Windows 路径撑出卡片 */}
+              <span className="min-w-0 flex-1 truncate font-mono text-sm text-muted-foreground" title={env?.logsDir ?? '—'}>
+                {env?.logsDir ?? '—'}
+              </span>
               <Button variant="outline" size="sm" onClick={copyLogsDir}>
                 <Copy /> 复制路径
               </Button>
@@ -291,7 +294,9 @@ export function SettingsPage() {
             </Field>
             <Field orientation="horizontal">
               <FieldLabel className="w-40 shrink-0">数据目录</FieldLabel>
-              <span className="font-mono text-sm text-muted-foreground">{env?.dataDir ?? '—'}</span>
+              <span className="min-w-0 flex-1 truncate font-mono text-sm text-muted-foreground" title={env?.dataDir ?? '—'}>
+                {env?.dataDir ?? '—'}
+              </span>
             </Field>
             <div>
               <Button variant="outline" size="sm" onClick={reviewRisk}>
@@ -301,19 +306,17 @@ export function SettingsPage() {
           </FieldGroup>
         </CardContent>
       </Card>
-      {isDirty && (
-        <div className="sticky bottom-0 flex items-center gap-3 border-t bg-background py-3">
-          <span className="text-sm text-muted-foreground">有未保存的设置</span>
-          <div className="ml-auto flex items-center gap-2">
-            <Button variant="outline" onClick={revert}>
-              撤销修改
-            </Button>
-            <Button disabled={conflicts.size > 0 || saving} onClick={() => void save()}>
-              保存设置
-            </Button>
-          </div>
+      <div className="sticky bottom-0 flex items-center gap-3 border-t bg-background py-3">
+        <span className="text-sm text-muted-foreground">{isDirty ? '有未保存的设置' : '无未保存的修改'}</span>
+        <div className="ml-auto flex items-center gap-2">
+          <Button variant="outline" disabled={!isDirty} onClick={revert}>
+            撤销修改
+          </Button>
+          <Button disabled={!isDirty || conflicts.size > 0 || saving} onClick={() => void save()}>
+            保存设置
+          </Button>
         </div>
-      )}
+      </div>
     </div>
   );
 }

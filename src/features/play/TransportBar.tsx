@@ -79,11 +79,12 @@ export function TransportBar({ soloTrackName, onPreviewToggle, onPlay, onPause, 
           <Square className="size-4" />
           {view.stop.label}
         </Button>
-        <span className="flex items-center gap-1.5 text-sm">
+        {/* nowrap 保证整段提示不被折行拆开 */}
+        <span className="flex items-center gap-1.5 whitespace-nowrap text-sm">
           <span className={cn('size-2 rounded-full', STATUS_DOT_CLASS[view.status.tone])} />
           <span>{view.status.text}</span>
         </span>
-        <span className="flex items-center gap-1.5 text-sm text-muted-foreground">
+        <span className="flex items-center gap-1.5 whitespace-nowrap text-sm text-muted-foreground">
           <Kbd>{toggleLabel}</Kbd>
           开始/暂停 ·
           <Kbd>{displayShortcut(hotkeys.stop, platform)}</Kbd>

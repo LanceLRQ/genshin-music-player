@@ -99,7 +99,8 @@ export function VirtualKeyboard() {
   return (
     <Card className="relative gap-0 py-4">
       <CardContent className="flex flex-col gap-3">
-        <div className="absolute right-2 top-2 z-20">
+        {/* 视图切换在文档流内右对齐，键帽换行时不会与浮层重叠 */}
+        <div className="flex justify-end">
           <ToggleGroup
             type="single"
             variant="outline"

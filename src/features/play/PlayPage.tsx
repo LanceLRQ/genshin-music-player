@@ -330,14 +330,15 @@ export function PlayPage() {
             </div>
           </div>
         )}
-        <div className="flex min-w-0 flex-1 flex-col gap-3 p-4 pb-0">
+        <div className="@container flex min-w-0 flex-1 flex-col gap-3 p-4 pb-0">
           {hasScore ? (
             <>
               <ScoreHeader score={score} />
               <VirtualKeyboard />
               <TimelineBar />
               <RangeControls locked={locked} />
-              <div className="grid min-h-0 flex-1 grid-cols-2 gap-3">
+              {/* 窄容器退单列；行高约束为 minmax(0,1fr)，单列时两卡各自内滚、不撑爆页面 */}
+              <div className="grid min-h-0 flex-1 auto-rows-[minmax(0,1fr)] grid-cols-1 gap-3 @[560px]:grid-cols-2">
                 <div className="flex min-h-0 flex-col gap-3 overflow-y-auto pr-1">
                   <AdaptOptionsPanel
                     profile={profile}
@@ -403,20 +404,17 @@ export function PlayPage() {
                   </CardContent>
                 </Card>
               </div>
-              <div className="sticky bottom-0 -mx-4 flex flex-wrap items-center gap-3 border-t bg-background/95 px-4 py-3 backdrop-blur">
-                <div className="min-w-0 flex-1">
-                  <TransportBar
-                    soloTrackName={solo ? (score.tracks.find((track) => track.id === solo.trackId)?.name ?? null) : null}
-                    onPreviewToggle={handlePreviewToggle}
-                    onPlay={() => void handlePlay()}
-                    onPause={() => void useTransportStore.getState().pause()}
-                    onStop={handleStop}
-                    onSoloCancel={handleSoloCancel}
-                  />
-                </div>
-                <div className="min-w-0 shrink-0">
-                  <SummaryLine />
-                </div>
+              {/* 控制条占满一行，统计行独占下一行；统计行首次演奏结束才出现，底栏高度只增高一次，可接受 */}
+              <div className="sticky bottom-0 -mx-4 flex flex-col gap-2 border-t bg-background/95 px-4 py-3 backdrop-blur">
+                <TransportBar
+                  soloTrackName={solo ? (score.tracks.find((track) => track.id === solo.trackId)?.name ?? null) : null}
+                  onPreviewToggle={handlePreviewToggle}
+                  onPlay={() => void handlePlay()}
+                  onPause={() => void useTransportStore.getState().pause()}
+                  onStop={handleStop}
+                  onSoloCancel={handleSoloCancel}
+                />
+                <SummaryLine />
               </div>
             </>
           ) : (
@@ -426,7 +424,9 @@ export function PlayPage() {
                   <AudioLines />
                 </EmptyMedia>
                 <EmptyTitle>导入乐谱开始</EmptyTitle>
-                <EmptyDescription>支持 MIDI、键盘谱、简谱和 JSON 谱，也可以把文件直接拖进窗口。</EmptyDescription>
+                <EmptyDescription>
+                  支持 MIDI、键盘谱、简谱和 <span className="whitespace-nowrap">JSON 谱</span>，也可以把文件直接拖进窗口。
+                </EmptyDescription>
               </EmptyHeader>
               <EmptyContent>
                 <div className="flex flex-wrap items-center justify-center gap-2">

@@ -171,6 +171,7 @@ export function InstrumentsPage() {
       <Button
         key={profile.id}
         variant="ghost"
+        title={profile.name}
         className={`w-full justify-between gap-2 ${active ? 'bg-accent' : ''}`}
         onClick={() => {
           if (editing) {

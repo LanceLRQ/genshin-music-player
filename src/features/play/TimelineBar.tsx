@@ -19,17 +19,20 @@ export function TimelineBar() {
   const percent = total > 0 ? Math.min(Math.max((sourcePositionMs / total) * 100, 0), 100) : 0;
   return (
     <div className="flex flex-col gap-1">
-      <div
-        role="progressbar"
-        aria-valuemin={0}
-        aria-valuemax={Math.round(total)}
-        aria-valuenow={Math.round(sourcePositionMs)}
-        className="relative h-1.5 overflow-hidden rounded-full bg-muted"
-      >
+      {/* 指针放在 overflow-hidden 轨道外层定位，否则 12px 圆点会被 6px 高的轨道上下各裁 3px */}
+      <div className="relative">
         <div
-          className="absolute inset-y-0 bg-sky-500/25"
-          style={{ left: `${(range.startMs / total) * 100}%`, width: `${((range.endMs - range.startMs) / total) * 100}%` }}
-        />
+          role="progressbar"
+          aria-valuemin={0}
+          aria-valuemax={Math.round(total)}
+          aria-valuenow={Math.round(sourcePositionMs)}
+          className="relative h-1.5 overflow-hidden rounded-full bg-muted"
+        >
+          <div
+            className="absolute inset-y-0 bg-sky-500/25"
+            style={{ left: `${(range.startMs / total) * 100}%`, width: `${((range.endMs - range.startMs) / total) * 100}%` }}
+          />
+        </div>
         <div
           className="absolute top-1/2 size-3 -translate-x-1/2 -translate-y-1/2 rounded-full bg-sky-500"
           style={{ left: `${percent}%` }}

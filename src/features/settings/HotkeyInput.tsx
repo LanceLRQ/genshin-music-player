@@ -73,7 +73,8 @@ export function HotkeyInput({ info, value, defaultValue, conflict = false, disab
           variant="outline"
           aria-label={`${info.label}快捷键`}
           disabled={disabled || capturing}
-          className={cn(conflict && 'border-destructive text-destructive')}
+          // 固定最小宽度：录制态文案比常态长，避免状态切换时按钮宽度突变、同行元素横移
+          className={cn('min-w-56', conflict && 'border-destructive text-destructive')}
           onClick={() => {
             setHint(null);
             setCapturing(true);

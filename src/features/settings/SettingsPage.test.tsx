@@ -65,15 +65,19 @@ describe('SettingsPage', () => {
     expect(screen.getByText('C:\\data')).toBeInTheDocument();
   });
 
-  it('修改后出现底部操作栏，撤销后消失', async () => {
+  it('底部操作栏常驻：修改后按钮可用，撤销后回到禁用', async () => {
     const spy = vi.spyOn(toast, 'info');
     const { user } = await renderPage();
-    expect(screen.queryByRole('button', { name: '保存设置' })).not.toBeInTheDocument();
+    expect(screen.getByText('无未保存的修改')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '保存设置' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: '撤销修改' })).toBeDisabled();
     await user.click(screen.getByRole('switch', { name: '写入执行日志' }));
     expect(screen.getByText('有未保存的设置')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '保存设置' })).toBeEnabled();
     expect(screen.getByRole('switch', { name: '写入执行日志' })).not.toBeChecked();
     await user.click(screen.getByRole('button', { name: '撤销修改' }));
-    await waitFor(() => expect(screen.queryByRole('button', { name: '保存设置' })).not.toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText('无未保存的修改')).toBeInTheDocument());
+    expect(screen.getByRole('button', { name: '保存设置' })).toBeDisabled();
     expect(screen.getByRole('switch', { name: '写入执行日志' })).toBeChecked();
     expect(spy).toHaveBeenCalledWith('已撤销未保存的修改');
   });
@@ -85,7 +89,7 @@ describe('SettingsPage', () => {
     const { user } = await renderPage();
     await user.click(screen.getByRole('switch', { name: '写入执行日志' }));
     await user.click(screen.getByRole('button', { name: '保存设置' }));
-    await waitFor(() => expect(screen.queryByRole('button', { name: '保存设置' })).not.toBeInTheDocument());
+    await waitFor(() => expect(screen.getByRole('button', { name: '保存设置' })).toBeDisabled());
     expect(useSettingsStore.getState().settings).toEqual(saved);
     expect(useSettingsStore.getState().draft).toBeNull();
     expect(successSpy).toHaveBeenCalledWith('设置已保存');

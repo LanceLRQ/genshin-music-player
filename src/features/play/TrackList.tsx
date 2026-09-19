@@ -1,10 +1,7 @@
 import { Button } from '@/components/ui/button';
 import { Card, CardAction, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import type { Track } from '@/core/model/score';
 import { TrackItem, type SoloMode } from './TrackItem';
-
-const MAX_VISIBLE_TRACKS = 8;
 
 interface TrackListProps {
   tracks: Track[];
@@ -17,7 +14,7 @@ interface TrackListProps {
   onSolo: (mode: SoloMode, trackId: string) => void;
 }
 
-/** 音轨列表：勾选的音轨合并适配（设计 01 第 4.4 节）；超过 8 条时内部滚动 */
+/** 音轨列表：勾选的音轨合并适配（设计 01 第 4.4 节）；滚动交给左栏中段的 overflow 容器，内部不再自建滚动 */
 export function TrackList({ tracks, checkedIds, rates, pitched, locked, onSetChecked, onSolo }: TrackListProps) {
   const toggle = (trackId: string) => {
     onSetChecked(
@@ -57,13 +54,7 @@ export function TrackList({ tracks, checkedIds, rates, pitched, locked, onSetChe
         </CardAction>
       </CardHeader>
       <CardContent>
-        {tracks.length > MAX_VISIBLE_TRACKS ? (
-          <ScrollArea className="max-h-[360px]">
-            <div className="flex flex-col gap-2 pr-3">{list}</div>
-          </ScrollArea>
-        ) : (
-          <div className="flex flex-col gap-2">{list}</div>
-        )}
+        <div className="flex flex-col gap-2">{list}</div>
       </CardContent>
     </Card>
   );

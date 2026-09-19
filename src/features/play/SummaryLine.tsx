@@ -23,9 +23,10 @@ export function SummaryLine() {
   };
   return (
     <div className="flex flex-col gap-1 text-xs text-muted-foreground">
+      {/* nowrap 防止统计在 p50 / p95 之间断行 */}
       <p className="flex flex-wrap items-center gap-1.5">
         {mock && <Badge variant="secondary">模拟</Badge>}
-        <span>
+        <span className="whitespace-nowrap">
           上次演奏：{eventsSent} 次按键 · 延迟 p50 {formatMs(latenessP50Ms)} · p95 {formatMs(latenessP95Ms)} · 最大{' '}
           {formatMs(latenessMaxMs)}
           {dropped > 0 && <> · 变速丢弃 {dropped}</>}

@@ -1,5 +1,5 @@
 import { ArrowDown, ArrowUp, CircleAlert, Plus, Trash2, X } from 'lucide-react';
-import { useEffect, useMemo, useState } from 'react';
+import { Fragment, useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import {
@@ -327,75 +327,79 @@ export function InstrumentEditor({ profile, saved, onDirtyChange, onCancel, onDo
                 </div>
               </div>
               <div className="flex flex-col gap-2">
-                {row.keys.map((instrumentKey, keyIndex) => (
-                  <div key={`${rowIndex}-${keyIndex}`} className="flex flex-wrap items-center gap-2">
-                    <KeyCaptureButton
-                      value={instrumentKey.code}
-                      onCapture={(code) => updateKey(rowIndex, keyIndex, (target) => { target.code = code; })}
-                    />
-                    {draft.kind === 'pitched' ? (
-                      instrumentKey.chord === undefined ? (
-                        <>
-                          <KeyTypeToggle
-                            ariaLabel={`第 ${rowIndex + 1} 行第 ${keyIndex + 1} 个键的键类型`}
-                            value="pitch"
-                            onChange={(mode) => switchKeyType(rowIndex, keyIndex, mode)}
+                {row.keys.map((instrumentKey, keyIndex) => {
+                  const keyError = errors.keys.get(`${rowIndex}-${keyIndex}`);
+                  return (
+                    <Fragment key={`${rowIndex}-${keyIndex}`}>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <KeyCaptureButton
+                          value={instrumentKey.code}
+                          onCapture={(code) => updateKey(rowIndex, keyIndex, (target) => { target.code = code; })}
+                        />
+                        {draft.kind === 'pitched' ? (
+                          instrumentKey.chord === undefined ? (
+                            <>
+                              <KeyTypeToggle
+                                ariaLabel={`第 ${rowIndex + 1} 行第 ${keyIndex + 1} 个键的键类型`}
+                                value="pitch"
+                                onChange={(mode) => switchKeyType(rowIndex, keyIndex, mode)}
+                              />
+                              <PitchInput
+                                ariaLabel={`第 ${rowIndex + 1} 行第 ${keyIndex + 1} 个键的音高`}
+                                pitch={instrumentKey.pitch}
+                                invalid={keyError !== undefined}
+                                onCommit={(pitch) => updateKey(rowIndex, keyIndex, (target) => { target.pitch = pitch; })}
+                              />
+                            </>
+                          ) : (
+                            <>
+                              <KeyTypeToggle
+                                ariaLabel={`第 ${rowIndex + 1} 行第 ${keyIndex + 1} 个键的键类型`}
+                                value="chord"
+                                onChange={(mode) => switchKeyType(rowIndex, keyIndex, mode)}
+                              />
+                              <ChordLabelInput
+                                ariaLabel={`第 ${rowIndex + 1} 行第 ${keyIndex + 1} 个键的和弦名`}
+                                value={instrumentKey.label}
+                                onCommit={(label) => updateKey(rowIndex, keyIndex, (target) => { target.label = label; })}
+                              />
+                              <ChordNotesInput
+                                ariaLabel={`第 ${rowIndex + 1} 行第 ${keyIndex + 1} 个键的和弦构成音`}
+                                chord={instrumentKey.chord}
+                                invalid={keyError !== undefined}
+                                onCommit={(chord) => updateKey(rowIndex, keyIndex, (target) => { target.chord = chord; })}
+                              />
+                            </>
+                          )
+                        ) : (
+                          <Input
+                            value={instrumentKey.voice ?? ''}
+                            placeholder="don / ka"
+                            className="w-32"
+                            aria-label={`第 ${rowIndex + 1} 行第 ${keyIndex + 1} 个键的音色`}
+                            onChange={(event) => updateKey(rowIndex, keyIndex, (target) => { target.voice = event.target.value.trim(); })}
                           />
-                          <PitchInput
-                            ariaLabel={`第 ${rowIndex + 1} 行第 ${keyIndex + 1} 个键的音高`}
-                            pitch={instrumentKey.pitch}
-                            invalid={errors.keys.has(`${rowIndex}-${keyIndex}`)}
-                            onCommit={(pitch) => updateKey(rowIndex, keyIndex, (target) => { target.pitch = pitch; })}
-                          />
-                        </>
-                      ) : (
-                        <>
-                          <KeyTypeToggle
-                            ariaLabel={`第 ${rowIndex + 1} 行第 ${keyIndex + 1} 个键的键类型`}
-                            value="chord"
-                            onChange={(mode) => switchKeyType(rowIndex, keyIndex, mode)}
-                          />
-                          <ChordLabelInput
-                            ariaLabel={`第 ${rowIndex + 1} 行第 ${keyIndex + 1} 个键的和弦名`}
-                            value={instrumentKey.label}
-                            onCommit={(label) => updateKey(rowIndex, keyIndex, (target) => { target.label = label; })}
-                          />
-                          <ChordNotesInput
-                            ariaLabel={`第 ${rowIndex + 1} 行第 ${keyIndex + 1} 个键的和弦构成音`}
-                            chord={instrumentKey.chord}
-                            invalid={errors.keys.has(`${rowIndex}-${keyIndex}`)}
-                            onCommit={(chord) => updateKey(rowIndex, keyIndex, (target) => { target.chord = chord; })}
-                          />
-                        </>
-                      )
-                    ) : (
-                      <Input
-                        value={instrumentKey.voice ?? ''}
-                        placeholder="don / ka"
-                        className="w-32"
-                        aria-label={`第 ${rowIndex + 1} 行第 ${keyIndex + 1} 个键的音色`}
-                        onChange={(event) => updateKey(rowIndex, keyIndex, (target) => { target.voice = event.target.value.trim(); })}
-                      />
-                    )}
-                    {errors.keys.get(`${rowIndex}-${keyIndex}`) && (
-                      <p className="text-sm text-destructive">{errors.keys.get(`${rowIndex}-${keyIndex}`)}</p>
-                    )}
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="size-7"
-                      aria-label={`删除第 ${rowIndex + 1} 行第 ${keyIndex + 1} 个键`}
-                      disabled={row.keys.length <= 1}
-                      onClick={() =>
-                        update((next) => {
-                          next.rows[rowIndex].keys.splice(keyIndex, 1);
-                        })
-                      }
-                    >
-                      <X />
-                    </Button>
-                  </div>
-                ))}
+                        )}
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="size-7"
+                          aria-label={`删除第 ${rowIndex + 1} 行第 ${keyIndex + 1} 个键`}
+                          disabled={row.keys.length <= 1}
+                          onClick={() =>
+                            update((next) => {
+                              next.rows[rowIndex].keys.splice(keyIndex, 1);
+                            })
+                          }
+                        >
+                          <X />
+                        </Button>
+                      </div>
+                      {/* 错误提示独立渲染在键行正下方，不混入 flex-wrap 行，换行位置稳定 */}
+                      {keyError && <p className="text-sm text-destructive">{keyError}</p>}
+                    </Fragment>
+                  );
+                })}
                 <Button
                   variant="ghost"
                   size="sm"
