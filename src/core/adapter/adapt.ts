@@ -120,12 +120,33 @@ function resolveSplitPitch(tracks: Track[], profile: InstrumentProfile): number 
   return pitches.length > 0 ? median(pitches) : DEFAULT_SPLIT_PITCH;
 }
 
+/** 和弦簇匹配（M6）：同时发声的音簇与乐器和弦键做音级集合（pitch class）Jaccard 匹配 */
+function matchChord(
+  group: Candidate[],
+  chordKeys: { code: string; pcs: Set<number> }[],
+): string | undefined {
+  const pcs = new Set(group.map((candidate) => ((candidate.order % 12) + 12) % 12));
+  if (pcs.size < 3) return undefined;
+  let best: { code: string; score: number } | undefined;
+  for (const key of chordKeys) {
+    let inter = 0;
+    for (const pc of key.pcs) if (pcs.has(pc)) inter += 1;
+    const score = inter / (key.pcs.size + pcs.size - inter);
+    if (score >= 0.75 && (!best || score > best.score)) best = { code: key.code, score };
+  }
+  return best?.code;
+}
+
 function buildPresses(
   candidates: Candidate[],
   profile: InstrumentProfile,
   options: AdaptOptions,
   report: AdaptReport,
 ): Press[] {
+  const chordKeys = profile.rows
+    .flatMap((row) => row.keys)
+    .filter((key) => key.chord !== undefined)
+    .map((key) => ({ code: key.code, pcs: new Set(key.chord!.map((p) => p % 12)) }));
   const sorted = [...candidates].sort((a, b) => a.startMs - b.startMs || b.order - a.order);
   const lastPressAt = new Map<string, number>();
   const presses: Press[] = [];
@@ -137,6 +158,24 @@ function buildPresses(
     while (end < sorted.length && sorted[end].startMs - groupStart <= options.chordWindowMs) end += 1;
     const group = sorted.slice(index, end).sort((a, b) => b.order - a.order);
     index = end;
+
+    // 和弦簇命中：整个同时组收成一个和弦键（≥3 个不同音级、与某和弦键 Jaccard ≥0.75）
+    if (chordKeys.length > 0 && group.length >= 3) {
+      const chordCode = matchChord(group, chordKeys);
+      if (chordCode !== undefined) {
+        const last = lastPressAt.get(chordCode);
+        if (last === undefined || groupStart - last >= profile.timing.minRepeatGapMs) {
+          for (const candidate of group) {
+            if (candidate.folded) report.folded += 1;
+          }
+          report.played += group.length;
+          report.merged += group.length - 1;
+          lastPressAt.set(chordCode, groupStart);
+          presses.push({ tMs: groupStart, codes: [chordCode], holdMs: profile.timing.holdMs });
+          continue;
+        }
+      }
+    }
 
     const selected: Candidate[] = [];
     for (const candidate of group) {
