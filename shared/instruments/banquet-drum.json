@@ -3,41 +3,32 @@
   "id": "banquet-drum",
   "name": "绮筵之鼓",
   "kind": "percussion",
-  "status": "unverified",
+  "status": "verified",
   "rows": [
     {
-      "label": "上排",
+      "label": "鼓",
       "keys": [
-        { "voice": "don", "code": "KeyQ" },
-        { "voice": "don-2", "code": "KeyW" },
-        { "voice": "ka", "code": "KeyI" },
-        { "voice": "ka-2", "code": "KeyO" }
-      ]
-    },
-    {
-      "label": "下排",
-      "keys": [
-        { "voice": "don-3", "code": "KeyA" },
-        { "voice": "don-4", "code": "KeyS" },
-        { "voice": "ka-3", "code": "KeyK" },
-        { "voice": "ka-4", "code": "KeyL" }
+        { "voice": "ka", "label": "咔", "code": "KeyA" },
+        { "voice": "don", "label": "咚", "code": "KeyS" },
+        { "voice": "don-2", "label": "咚", "code": "KeyK" },
+        { "voice": "ka-2", "label": "咔", "code": "KeyL" }
       ]
     }
   ],
-  "timing": { "holdMs": 30, "minRepeatGapMs": 40, "sustain": false },
+  "timing": { "holdMs": 30, "minRepeatGapMs": 96, "sustain": false },
   "percussionMap": {
     "drumNotes": {
       "35": "don",
       "36": "don-2",
       "37": "ka",
       "38": "ka-2",
-      "40": "ka-3",
-      "42": "ka-4",
+      "40": "ka",
+      "42": "ka-2",
       "44": "ka",
       "46": "ka-2",
-      "49": "ka-3",
-      "51": "ka-4",
-      "57": "don-3"
+      "49": "ka",
+      "51": "ka-2",
+      "57": "ka"
     },
     "splitPitch": "auto"
   }

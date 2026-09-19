@@ -89,7 +89,7 @@ describe('parseKeyscore', () => {
   });
 
   it('敲击类来源乐器生成 voice 音符', () => {
-    expect(brief('F J', { defaultInstrumentId: 'festive-drum' })).toEqual([
+    expect(brief('S A', { defaultInstrumentId: 'festive-drum' })).toEqual([
       [0, 250, 'don'],
       [250, 250, 'ka'],
     ]);

@@ -18,7 +18,7 @@ describe('orderedPreviewKeys', () => {
   });
 
   it('敲击类乐器按配置行序排列', () => {
-    expect(orderedPreviewKeys(drum).map((key) => key.code)).toEqual(['KeyF', 'KeyJ']);
+    expect(orderedPreviewKeys(drum).map((key) => key.code)).toEqual(['KeyS', 'KeyA']);
   });
 });
 

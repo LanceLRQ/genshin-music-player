@@ -5,12 +5,20 @@ use std::sync::OnceLock;
 
 use serde::Deserialize;
 
-const BUILTIN_SOURCES: [&str; 5] = [
+/// 12 件内置乐器，顺序与前端 `BUILTIN_INSTRUMENTS` 一致
+const BUILTIN_SOURCES: [&str; 12] = [
     include_str!("../../../shared/instruments/windsong-lyre.json"),
     include_str!("../../../shared/instruments/floral-zither.json"),
     include_str!("../../../shared/instruments/vintage-lyre.json"),
     include_str!("../../../shared/instruments/two-row-prototype.json"),
     include_str!("../../../shared/instruments/festive-drum.json"),
+    include_str!("../../../shared/instruments/yuco-lyre.json"),
+    include_str!("../../../shared/instruments/harmony-clavier.json"),
+    include_str!("../../../shared/instruments/sprightly-lyre.json"),
+    include_str!("../../../shared/instruments/lingering-echo.json"),
+    include_str!("../../../shared/instruments/evening-horn.json"),
+    include_str!("../../../shared/instruments/juju-drum.json"),
+    include_str!("../../../shared/instruments/banquet-drum.json"),
 ];
 
 #[derive(Debug, Clone, PartialEq, Deserialize)]
@@ -44,7 +52,7 @@ pub struct InstrumentTiming {
     pub min_repeat_gap_ms: f64,
 }
 
-/// 按固定顺序返回 5 个内置乐器
+/// 按固定顺序返回 12 个内置乐器
 pub fn builtin_instruments() -> &'static [InstrumentLayout] {
     static BUILTIN: OnceLock<Vec<InstrumentLayout>> = OnceLock::new();
     BUILTIN.get_or_init(|| {

@@ -61,10 +61,10 @@ describe('VirtualKeyboard', () => {
     unmount();
     useAdaptStore.setState({ targetId: 'banquet-drum' });
     render(<VirtualKeyboard />);
-    expect(screen.getByRole('button', { name: '键帽 Q 咚' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: '键帽 W 咚-2' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '键帽 A 咔' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '键帽 S 咚' })).toBeInTheDocument();
     expect(guitar.rows[0].keys[0].chord).toEqual([48, 52, 55]);
-    expect(banquet.rows[0].keys[1].voice).toBe('don-2');
+    expect(banquet.rows[0].keys[2].voice).toBe('don-2');
   });
 
   it('演奏进行中键帽禁用且点击无效', async () => {

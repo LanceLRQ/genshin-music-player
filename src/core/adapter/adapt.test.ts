@@ -156,8 +156,8 @@ describe('adapt：敲击类乐器', () => {
   it('鼓轨按映射表转换，未映射的音计入 unmappedDrum', () => {
     const result = adapt(scoreOf(track('t0', [note(0, 36), note(500, 38), note(1000, 99)], true)), drum, options());
     expect(result.timeline.presses).toEqual([
-      { tMs: 0, codes: ['KeyF'], holdMs: 30 },
-      { tMs: 500, codes: ['KeyJ'], holdMs: 30 },
+      { tMs: 0, codes: ['KeyS'], holdMs: 30 },
+      { tMs: 500, codes: ['KeyA'], holdMs: 30 },
     ]);
     expect(result.report.dropped.unmappedDrum).toBe(1);
     expect(result.report.total).toBe(3);
@@ -165,12 +165,12 @@ describe('adapt：敲击类乐器', () => {
 
   it('非鼓轨默认以音高中位数分界', () => {
     const result = adapt(scoreOf(track('t0', [note(0, 50), note(500, 70)])), drum, options());
-    expect(codesOf(result)).toEqual([['KeyF'], ['KeyJ']]);
+    expect(codesOf(result)).toEqual([['KeyS'], ['KeyA']]);
   });
 
   it('percussionSplitPitch 覆盖分界音高', () => {
     const result = adapt(scoreOf(track('t0', [note(0, 50), note(500, 70)])), drum, options({ percussionSplitPitch: 80 }));
-    expect(codesOf(result)).toEqual([['KeyF'], ['KeyF']]);
+    expect(codesOf(result)).toEqual([['KeyS'], ['KeyS']]);
   });
 
   it('乐器配置中的数值分界音高优先于中位数', () => {
@@ -180,12 +180,12 @@ describe('adapt：敲击类乐器', () => {
       percussionMap: { ...drum.percussionMap!, splitPitch: 40 },
     });
     const result = adapt(scoreOf(track('t0', [note(0, 50), note(500, 70)])), splitDrum, options());
-    expect(codesOf(result)).toEqual([['KeyJ'], ['KeyJ']]);
+    expect(codesOf(result)).toEqual([['KeyA'], ['KeyA']]);
   });
 
   it('敲击类乐器不应用移调', () => {
     const result = adapt(scoreOf(track('t0', [note(0, 36)], true)), drum, options({ transpose: 5 }));
-    expect(codesOf(result)).toEqual([['KeyF']]);
+    expect(codesOf(result)).toEqual([['KeyS']]);
   });
 });
 

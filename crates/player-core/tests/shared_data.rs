@@ -53,9 +53,17 @@ fn builtin_instruments_are_listed_in_fixed_order() {
             "vintage-lyre",
             "two-row-prototype",
             "festive-drum",
+            "yuco-lyre",
+            "harmony-clavier",
+            "sprightly-lyre",
+            "lingering-echo",
+            "evening-horn",
+            "juju-drum",
+            "banquet-drum",
         ]
     );
     assert!(is_builtin_instrument_id("festive-drum"));
+    assert!(is_builtin_instrument_id("yuco-lyre"));
     assert!(!is_builtin_instrument_id("my-lyre"));
 }
 
@@ -91,7 +99,7 @@ fn builtin_layouts_keep_rows_pitches_and_timing() {
     assert_eq!(two_row.rows[1].keys[5].code, "KeyN");
 
     let drum = find_builtin_instrument("festive-drum").unwrap();
-    assert_eq!(drum.rows[0].keys[0].code, "KeyF");
+    assert_eq!(drum.rows[0].keys[0].code, "KeyS");
     assert_eq!(drum.rows[0].keys[0].pitch, None);
     assert!(find_builtin_instrument("nope").is_none());
 }

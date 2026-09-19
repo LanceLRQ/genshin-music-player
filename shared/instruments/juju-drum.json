@@ -8,32 +8,41 @@
     {
       "label": "上排",
       "keys": [
-        { "voice": "don", "code": "KeyQ" },
-        { "voice": "ka", "code": "KeyI" }
+        { "voice": "bass", "label": "B", "code": "KeyQ" },
+        { "voice": "tom", "label": "T", "code": "KeyW" },
+        { "voice": "snare", "label": "S", "code": "KeyI" },
+        { "voice": "ride", "label": "R", "code": "KeyO" }
       ]
     },
     {
       "label": "下排",
       "keys": [
-        { "voice": "don-2", "code": "KeyA" },
-        { "voice": "ka-2", "code": "KeyK" }
+        { "voice": "bass-2", "label": "B", "code": "KeyA" },
+        { "voice": "tom-2", "label": "T", "code": "KeyS" },
+        { "voice": "snare-2", "label": "S", "code": "KeyK" },
+        { "voice": "ride-2", "label": "R", "code": "KeyL" }
       ]
     }
   ],
-  "timing": { "holdMs": 30, "minRepeatGapMs": 40, "sustain": false },
+  "timing": { "holdMs": 30, "minRepeatGapMs": 96, "sustain": false },
   "percussionMap": {
     "drumNotes": {
-      "35": "don",
-      "36": "don-2",
-      "37": "ka",
-      "38": "ka-2",
-      "40": "ka",
-      "42": "ka-2",
-      "44": "ka",
-      "46": "ka-2",
-      "49": "ka",
-      "51": "ka-2",
-      "57": "don"
+      "35": "bass",
+      "36": "bass-2",
+      "37": "snare",
+      "38": "snare-2",
+      "40": "snare",
+      "41": "tom",
+      "42": "ride-2",
+      "43": "tom-2",
+      "45": "tom",
+      "46": "ride",
+      "47": "tom-2",
+      "48": "tom",
+      "49": "ride",
+      "50": "tom-2",
+      "51": "ride-2",
+      "57": "snare"
     },
     "splitPitch": "auto"
   }

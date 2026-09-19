@@ -8,12 +8,12 @@
     {
       "label": "鼓",
       "keys": [
-        { "voice": "don", "code": "KeyF" },
-        { "voice": "ka", "code": "KeyJ" }
+        { "voice": "don", "code": "KeyS" },
+        { "voice": "ka", "code": "KeyA" }
       ]
     }
   ],
-  "timing": { "holdMs": 30, "minRepeatGapMs": 40, "sustain": false },
+  "timing": { "holdMs": 30, "minRepeatGapMs": 96, "sustain": false },
   "percussionMap": {
     "drumNotes": {
       "35": "don",
