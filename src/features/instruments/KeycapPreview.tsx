@@ -45,9 +45,11 @@ export function KeycapPreview({ profile, className }: KeycapPreviewProps) {
                 <span className="text-xs text-muted-foreground">
                   {profile.kind === 'percussion'
                     ? voiceLabel(instrumentKey.voice ?? '')
-                    : instrumentKey.pitch === undefined
-                      ? '—'
-                      : midiToNoteName(instrumentKey.pitch)}
+                    : instrumentKey.chord !== undefined
+                      ? (instrumentKey.label ?? '和弦')
+                      : instrumentKey.pitch === undefined
+                        ? '—'
+                        : midiToNoteName(instrumentKey.pitch)}
                 </span>
               </button>
             ))}

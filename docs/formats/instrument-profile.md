@@ -203,3 +203,11 @@ cargo run -p gm-verify --release -- pattern scale --instrument windsong-lyre
 ### 敲击类乐器的音色
 
 用调音器分辨不同鼓面敲击出的音色差异比较困难，更适合直接凭听感和节奏位置判断"咚"和"咔"对应哪个键，再用 `cargo run -p gm-verify --release -- pattern chord --instrument <id>` 或 `cargo run -p gm-verify --release -- pattern scale --instrument <id>` 逐键确认。
+
+## 和弦键（M6，v1 schema 可选字段）
+
+音高类乐器的键除 `pitch`（单音）外，可改用 `chord` 表示和弦键（与 `pitch` 二选一），写法：`{ "chord": [48, 52, 55], "label": "C", "code": "KeyQ" }`。
+
+- `chord`：构成音的 MIDI 音高数组，2–7 个音、严格升序不重复。
+- `label`：和弦显示名（必填），如 `C`、`Dm`、`Bdim`。
+- 演奏适配时，同一时间窗内 ≥3 个不同音级的音符簇会与和弦键做音级集合匹配（Jaccard ≥ 0.75 命中），命中后整簇收成一个按键；未命中回退逐音映射。琶音（时间错开的音符）不会合并。
