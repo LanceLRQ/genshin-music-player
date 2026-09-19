@@ -6,27 +6,39 @@
   "status": "unverified",
   "rows": [
     {
-      "label": "高音谱号",
+      "label": "和弦",
       "keys": [
-        { "pitch": 60, "code": "KeyQ" },
-        { "pitch": 62, "code": "KeyW" },
-        { "pitch": 64, "code": "KeyE" },
-        { "pitch": 65, "code": "KeyR" },
-        { "pitch": 67, "code": "KeyT" },
-        { "pitch": 69, "code": "KeyY" },
-        { "pitch": 71, "code": "KeyU" }
+        { "chord": [48, 52, 55], "label": "C", "code": "KeyQ" },
+        { "chord": [50, 53, 57], "label": "Dm", "code": "KeyW" },
+        { "chord": [52, 55, 59], "label": "Em", "code": "KeyE" },
+        { "chord": [53, 57, 60], "label": "F", "code": "KeyR" },
+        { "chord": [55, 59, 62], "label": "G", "code": "KeyT" },
+        { "chord": [57, 60, 64], "label": "Am", "code": "KeyY" },
+        { "chord": [59, 62, 65], "label": "Bdim", "code": "KeyU" }
       ]
     },
     {
-      "label": "低音谱号",
+      "label": "中音",
       "keys": [
-        { "pitch": 48, "code": "KeyA" },
-        { "pitch": 50, "code": "KeyS" },
-        { "pitch": 52, "code": "KeyD" },
-        { "pitch": 53, "code": "KeyF" },
-        { "pitch": 55, "code": "KeyG" },
+        { "pitch": 60, "code": "KeyA" },
+        { "pitch": 62, "code": "KeyS" },
+        { "pitch": 64, "code": "KeyD" },
+        { "pitch": 65, "code": "KeyF" },
+        { "pitch": 67, "code": "KeyG" },
+        { "pitch": 69, "code": "KeyH" },
+        { "pitch": 71, "code": "KeyJ" }
+      ]
+    },
+    {
+      "label": "低音",
+      "keys": [
+        { "pitch": 48, "code": "KeyZ" },
+        { "pitch": 50, "code": "KeyX" },
+        { "pitch": 52, "code": "KeyC" },
+        { "pitch": 53, "code": "KeyV" },
+        { "pitch": 55, "code": "KeyB" },
         { "pitch": 57, "code": "KeyN" },
-        { "pitch": 59, "code": "KeyJ" }
+        { "pitch": 59, "code": "KeyM" }
       ]
     }
   ],

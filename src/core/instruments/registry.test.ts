@@ -65,12 +65,20 @@ describe('内置乐器', () => {
     expect(drum.status).toBe('verified');
   });
 
-  it('悠可琴与沃雅妮莎同为 2×7 布局（A 排 + N/J）', () => {
-    expect(builtin('yuco-lyre').rows).toEqual(builtin('two-row-prototype').rows);
+  it('悠可琴/余音为和弦吉他：Q 排 7 个和弦键 + 下两排单音（M6）', () => {
+    for (const id of ['yuco-lyre', 'lingering-echo']) {
+      const guitar = builtin(id);
+      expect(guitar.rows).toHaveLength(3);
+      const chordRow = guitar.rows[0].keys;
+      expect(chordRow.map((k) => k.label)).toEqual(['C', 'Dm', 'Em', 'F', 'G', 'Am', 'Bdim']);
+      expect(chordRow[0].chord).toEqual([48, 52, 55]);
+      expect(guitar.rows[1].keys.map((k) => k.pitch)).toEqual([60, 62, 64, 65, 67, 69, 71]);
+      expect(guitar.rows[2].keys.map((k) => k.pitch)).toEqual([48, 50, 52, 53, 55, 57, 59]);
+    }
   });
 
-  it('三件新 21 键乐器（谐律键琴/跃律琴/余音）与风物之诗琴键位相同', () => {
-    for (const id of ['harmony-clavier', 'sprightly-lyre', 'lingering-echo']) {
+  it('谐律键琴/跃律琴与风物之诗琴键位相同', () => {
+    for (const id of ['harmony-clavier', 'sprightly-lyre']) {
       expect(builtin(id).rows).toEqual(builtin('windsong-lyre').rows);
     }
   });
