@@ -144,7 +144,7 @@ export function InstrumentEditor({ profile, saved, onDirtyChange, onCancel, onDo
   const percussionMap = draft.kind === 'percussion' ? (draft.percussionMap ?? structuredClone(DEFAULT_PERCUSSION_MAP)) : null;
 
   return (
-    <div className="flex flex-col gap-4 pb-4">
+    <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto pr-1 pb-4">
       <div>
         <h2 className="text-lg font-semibold">{saved ? '编辑乐器' : '新建乐器'}</h2>
         <p className="text-sm text-muted-foreground">{saved ? '修改会即时校验，保存后生效' : '填写名称与键位，保存后加入自定义列表'}</p>
