@@ -83,7 +83,7 @@ export function AppSidebar() {
           <Button variant="ghost" size="icon" className="size-8" aria-label="展开或收起侧边栏" onClick={toggleSidebar}>
             <PanelLeft />
           </Button>
-          <span className="truncate text-sm font-semibold group-data-[collapsible=icon]:hidden">Genshin Music Player</span>
+          <span className="truncate text-sm font-semibold group-data-[collapsible=icon]:hidden">原琴模拟器</span>
         </div>
       </SidebarHeader>
       <SidebarContent>
