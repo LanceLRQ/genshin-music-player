@@ -48,7 +48,7 @@ describe('InstrumentEditor', () => {
     expect(screen.getByLabelText('ID')).toBeDisabled();
     expect(screen.getByText('保存过的乐器 ID 不可修改')).toBeInTheDocument();
     expect(screen.getByLabelText('按住时长')).toHaveValue(30);
-    expect(screen.getByLabelText('最小重复间隔')).toHaveValue(40);
+    expect(screen.getByLabelText('最小重复间隔')).toHaveValue(75);
     expect(screen.getByRole('switch', { name: '可持续发声' })).not.toBeChecked();
     // "Q"出现两次：试弹预览的键帽 + 行编辑按键捕获按钮的 Kbd
     expect(screen.getAllByText('Q')).toHaveLength(2);

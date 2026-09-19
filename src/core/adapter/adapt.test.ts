@@ -26,7 +26,7 @@ describe('adapt：音高类乐器', () => {
     expect(result.timeline).toEqual({
       instrumentId: 'windsong-lyre',
       durationMs: 530,
-      minRepeatGapMs: 40,
+      minRepeatGapMs: 75,
       presses: [
         { tMs: 0, codes: ['KeyA'], holdMs: 30 },
         { tMs: 500, codes: ['KeyS'], holdMs: 30 },

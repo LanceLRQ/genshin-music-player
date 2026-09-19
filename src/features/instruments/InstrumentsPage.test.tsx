@@ -82,7 +82,7 @@ describe('InstrumentsPage 列表与详情', () => {
     expect(screen.getByText('已验证')).toBeInTheDocument();
     expect(screen.getByText('windsong-lyre')).toBeInTheDocument();
     expect(screen.getByText('虚拟琴键预览（点击试听）')).toBeInTheDocument();
-    expect(screen.getByText('按住时长 30ms · 最小重复间隔 40ms · 不可持续发声')).toBeInTheDocument();
+    expect(screen.getByText('按住时长 30ms · 最小重复间隔 75ms · 不可持续发声')).toBeInTheDocument();
     await user.click(screen.getByText('C5'));
     expect(previewPlayer.playKey).toHaveBeenCalled();
   });
