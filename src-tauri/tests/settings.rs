@@ -22,7 +22,8 @@ fn default_settings_match_frontend_defaults() {
             "targetWindow": { "className": "UnityWndClass", "titles": ["原神", "Genshin Impact"] },
             "defaultHumanizeMs": 0.0,
             "writeExecutionLog": true,
-            "simulateSound": false
+            "simulateSound": false,
+            "useChordKeys": true
         })
     );
     assert_eq!(validate_settings(&Settings::default()), Ok(()));
@@ -42,6 +43,7 @@ fn missing_shortcuts_field_uses_defaults() {
     assert_eq!(settings.hotkeys.toggle, "F7");
     assert_eq!(settings.countdown_sec, 5);
     assert!(!settings.simulate_sound, "旧版 settings.json 没有该字段时补默认值 false");
+    assert!(settings.use_chord_keys, "旧版 settings.json 没有该字段时补默认值 true");
 }
 
 /// 用例表与 M3b 任务 5 `src/lib/shortcuts.test.ts` 的 validateShortcut 用例逐条对应

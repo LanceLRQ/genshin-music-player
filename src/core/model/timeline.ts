@@ -11,6 +11,8 @@ export interface AdaptOptions {
   maxPolyphony: number;
   /** 起音间隔在此范围内的音算作同一个和弦 */
   chordWindowMs: number;
+  /** 是否启用乐器和弦键匹配（M6，默认开，取值来自全局设置 useChordKeys）；关闭后全走逐音 */
+  useChordKeys?: boolean;
   /** 覆盖乐器配置中的非鼓轨分界音高 */
   percussionSplitPitch?: number;
 }
@@ -49,8 +51,11 @@ export interface DropCounts {
 
 /**
  * total = played + merged + dropped 各项之和。
- * merged：同一时刻映射到同一个键、被合并为一次按键的音（合并多轨齐唱时常见），不算丢音。
+ * merged：同一时刻映射到同一个键、被合并为一次按键的音（合并多轨齐奏时常见），不算丢音。
  * folded：played 中被按八度折回的音数。
+ * chordHits / chordFallbacks（M6）：同一时刻的音组按音级集合与乐器和弦键匹配，
+ * chordHits 是整组收成一个和弦键的组数，chordFallbacks 是含 ≥3 个不同音级但没匹配上、
+ * 回退逐音的组数；乐器没有和弦键或 useChordKeys 关闭时恒为 0。
  */
 export interface AdaptReport {
   total: number;
@@ -58,4 +63,6 @@ export interface AdaptReport {
   folded: number;
   merged: number;
   dropped: DropCounts;
+  chordHits: number;
+  chordFallbacks: number;
 }

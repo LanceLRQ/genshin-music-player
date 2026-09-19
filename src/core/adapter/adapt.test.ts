@@ -38,6 +38,8 @@ describe('adapt：音高类乐器', () => {
       folded: 0,
       merged: 0,
       dropped: { blackKey: 0, outOfRange: 0, polyphony: 0, tooDense: 0, unmappedDrum: 0 },
+      chordHits: 0,
+      chordFallbacks: 0,
     });
   });
 
@@ -224,5 +226,36 @@ describe('adapt：和弦键匹配（M6）', () => {
   it('不匹配的簇回退逐音映射', () => {
     const off = adapt(scoreOf(track('t0', [note(0, 60), note(0, 62), note(0, 64)])), chordLyre, options());
     expect(off.timeline.presses[0]?.codes.length).toBeGreaterThan(1);
+  });
+
+  it('chordHits / chordFallbacks 分别统计命中与回退的音组数', () => {
+    const hit = adapt(scoreOf(track('t0', [note(0, 60), note(0, 64), note(0, 67)])), chordLyre, options());
+    expect(hit.report.chordHits).toBe(1);
+    expect(hit.report.chordFallbacks).toBe(0);
+    const fallback = adapt(scoreOf(track('t0', [note(0, 60), note(0, 62), note(0, 64)])), chordLyre, options());
+    expect(fallback.report.chordHits).toBe(0);
+    expect(fallback.report.chordFallbacks).toBe(1);
+    // 单音与二音组不参与统计
+    const single = adapt(scoreOf(track('t0', [note(0, 60)])), chordLyre, options());
+    expect(single.report.chordHits).toBe(0);
+    expect(single.report.chordFallbacks).toBe(0);
+  });
+
+  it('useChordKeys 关闭后不做和弦匹配，统计为 0', () => {
+    const result = adapt(
+      scoreOf(track('t0', [note(0, 60), note(0, 64), note(0, 67)])),
+      chordLyre,
+      options({ useChordKeys: false }),
+    );
+    expect(result.report.chordHits).toBe(0);
+    expect(result.report.chordFallbacks).toBe(0);
+    expect(result.timeline.presses).toHaveLength(1);
+    expect(result.timeline.presses[0].codes.length).toBe(3);
+  });
+
+  it('乐器没有和弦键时统计恒为 0', () => {
+    const result = adapt(scoreOf(track('t0', [note(0, 60), note(0, 64), note(0, 67)])), lyre, options());
+    expect(result.report.chordHits).toBe(0);
+    expect(result.report.chordFallbacks).toBe(0);
   });
 });

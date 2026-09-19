@@ -27,6 +27,8 @@ export function emptyReport(): AdaptReport {
     folded: 0,
     merged: 0,
     dropped: { blackKey: 0, outOfRange: 0, polyphony: 0, tooDense: 0, unmappedDrum: 0 },
+    chordHits: 0,
+    chordFallbacks: 0,
   };
 }
 
@@ -121,11 +123,7 @@ function resolveSplitPitch(tracks: Track[], profile: InstrumentProfile): number 
 }
 
 /** 和弦簇匹配（M6）：同时发声的音簇与乐器和弦键做音级集合（pitch class）Jaccard 匹配 */
-function matchChord(
-  group: Candidate[],
-  chordKeys: { code: string; pcs: Set<number> }[],
-): string | undefined {
-  const pcs = new Set(group.map((candidate) => ((candidate.order % 12) + 12) % 12));
+function matchChord(pcs: Set<number>, chordKeys: { code: string; pcs: Set<number> }[]): string | undefined {
   if (pcs.size < 3) return undefined;
   let best: { code: string; score: number } | undefined;
   for (const key of chordKeys) {
@@ -147,6 +145,7 @@ function buildPresses(
     .flatMap((row) => row.keys)
     .filter((key) => key.chord !== undefined)
     .map((key) => ({ code: key.code, pcs: new Set(key.chord!.map((p) => p % 12)) }));
+  const chordEnabled = chordKeys.length > 0 && options.useChordKeys !== false;
   const sorted = [...candidates].sort((a, b) => a.startMs - b.startMs || b.order - a.order);
   const lastPressAt = new Map<string, number>();
   const presses: Press[] = [];
@@ -159,21 +158,27 @@ function buildPresses(
     const group = sorted.slice(index, end).sort((a, b) => b.order - a.order);
     index = end;
 
-    // 和弦簇命中：整个同时组收成一个和弦键（≥3 个不同音级、与某和弦键 Jaccard ≥0.75）
-    if (chordKeys.length > 0 && group.length >= 3) {
-      const chordCode = matchChord(group, chordKeys);
-      if (chordCode !== undefined) {
-        const last = lastPressAt.get(chordCode);
-        if (last === undefined || groupStart - last >= profile.timing.minRepeatGapMs) {
-          for (const candidate of group) {
-            if (candidate.folded) report.folded += 1;
+    // 和弦簇命中：整个同时组收成一个和弦键（≥3 个不同音级、与某和弦键 Jaccard ≥0.75）。
+    // 没收成和弦键的候选组计入 chordFallbacks，供适配报告展示和弦命中率
+    if (chordEnabled && group.length >= 3) {
+      const pcs = new Set(group.map((candidate) => ((candidate.order % 12) + 12) % 12));
+      if (pcs.size >= 3) {
+        const chordCode = matchChord(pcs, chordKeys);
+        if (chordCode !== undefined) {
+          const last = lastPressAt.get(chordCode);
+          if (last === undefined || groupStart - last >= profile.timing.minRepeatGapMs) {
+            for (const candidate of group) {
+              if (candidate.folded) report.folded += 1;
+            }
+            report.played += group.length;
+            report.merged += group.length - 1;
+            report.chordHits += 1;
+            lastPressAt.set(chordCode, groupStart);
+            presses.push({ tMs: groupStart, codes: [chordCode], holdMs: profile.timing.holdMs });
+            continue;
           }
-          report.played += group.length;
-          report.merged += group.length - 1;
-          lastPressAt.set(chordCode, groupStart);
-          presses.push({ tMs: groupStart, codes: [chordCode], holdMs: profile.timing.holdMs });
-          continue;
         }
+        report.chordFallbacks += 1;
       }
     }
 

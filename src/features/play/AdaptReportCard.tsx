@@ -17,6 +17,8 @@ interface AdaptReportCardProps {
 export function AdaptReportCard({ report, hasTracks }: AdaptReportCardProps) {
   const rate = report === null ? 0 : hitRate(report);
   const droppedItems = report === null ? [] : DROPPED_ITEMS.filter((item) => report.dropped[item.key] > 0);
+  const chordAttempts = report === null ? 0 : report.chordHits + report.chordFallbacks;
+  const chordRate = chordAttempts === 0 ? 0 : report!.chordHits / chordAttempts;
   return (
     <Card>
       <CardHeader>
@@ -44,6 +46,19 @@ export function AdaptReportCard({ report, hasTracks }: AdaptReportCardProps) {
               </Tooltip>
               {report !== null && report.folded > 0 && <> · 折回 {report.folded}</>}
             </p>
+            {chordAttempts > 0 && (
+              <p className="text-xs text-muted-foreground">
+                和弦键 命中 {report!.chordHits}/{chordAttempts}（{formatPercent(chordRate)}）·
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <span className="mx-1 cursor-default underline decoration-dotted underline-offset-2">回退 {report!.chordFallbacks}</span>
+                  </TooltipTrigger>
+                  <TooltipContent className="max-w-72">
+                    同时发声且含 3 个以上不同音级的音组会尝试匹配乐器的和弦键，整组收成一次按键；没匹配上的组回退为逐音按下。可在设置的「演奏」分组里关闭。
+                  </TooltipContent>
+                </Tooltip>
+              </p>
+            )}
             {droppedItems.length > 0 && (
               <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
                 {droppedItems.map((item) => (
