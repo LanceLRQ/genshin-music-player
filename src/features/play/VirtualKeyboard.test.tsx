@@ -26,6 +26,7 @@ const execution: ExecutionTimeline = {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  localStorage.removeItem('previewView');
   useAdaptStore.setState(useAdaptStore.getInitialState(), true);
   useInstrumentStore.setState(useInstrumentStore.getInitialState(), true);
   useTransportStore.setState(useTransportStore.getInitialState(), true);
@@ -94,5 +95,54 @@ describe('VirtualKeyboard', () => {
     useTransportStore.setState({ playerState: { kind: 'waitingFocus' } });
     render(<VirtualKeyboard />);
     expect(screen.getByText('等待切换到原神窗口…')).toBeInTheDocument();
+  });
+
+  it('右上角切换到落音视图：显示落音舞台，键帽行隐藏，再点切回键帽', async () => {
+    const user = userEvent.setup();
+    render(<VirtualKeyboard />);
+    expect(screen.getByText('高音')).toBeInTheDocument();
+    expect(screen.queryByTestId('falling-stage')).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole('radio', { name: '落音预览' }));
+    expect(screen.getByTestId('falling-stage')).toBeInTheDocument();
+    // 落点条仍是键帽语义：按列显示乐器键，点击可以试听
+    expect(screen.getByRole('button', { name: '键帽 M B3' })).toBeInTheDocument();
+    expect(screen.queryByText('高音')).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole('radio', { name: '键帽视图' }));
+    expect(screen.queryByTestId('falling-stage')).not.toBeInTheDocument();
+    expect(screen.getByText('高音')).toBeInTheDocument();
+  });
+
+  it('落音视图的选择记忆到 localStorage，下次渲染直接生效', async () => {
+    const user = userEvent.setup();
+    const first = render(<VirtualKeyboard />);
+    await user.click(screen.getByRole('radio', { name: '落音预览' }));
+    expect(localStorage.getItem('previewView')).toBe('falling');
+    first.unmount();
+
+    render(<VirtualKeyboard />);
+    expect(screen.getByTestId('falling-stage')).toBeInTheDocument();
+  });
+
+  it('落音视图空闲时点击落点条键帽试听单个音', async () => {
+    const user = userEvent.setup();
+    render(<VirtualKeyboard />);
+    await user.click(screen.getByRole('radio', { name: '落音预览' }));
+    await user.click(screen.getByRole('button', { name: '键帽 M B3' }));
+    expect(previewPlayer.playKey).toHaveBeenCalledWith(lyre, 'KeyM');
+  });
+
+  it('试听进行中也能随时切换视图，且落音视图按键高亮跟随执行时间线', async () => {
+    const user = userEvent.setup();
+    useTransportStore.setState({
+      execution: { ...execution, events: [{ tMs: 0, up: [], down: ['KeyA'] }] },
+      previewing: true,
+      previewPositionMs: 0,
+    });
+    render(<VirtualKeyboard />);
+    await user.click(screen.getByRole('radio', { name: '落音预览' }));
+    expect(screen.getByRole('button', { name: '键帽 A C4' })).toHaveClass('border-primary');
+    expect(screen.getByRole('button', { name: '键帽 Q C5' })).not.toHaveClass('border-primary');
   });
 });
