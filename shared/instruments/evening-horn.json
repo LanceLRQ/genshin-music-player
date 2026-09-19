@@ -1,0 +1,28 @@
+{
+  "schemaVersion": 1,
+  "id": "evening-horn",
+  "name": "晚风圆号",
+  "kind": "pitched",
+  "status": "unverified",
+  "rows": [
+    {
+      "label": "高音谱号",
+      "keys": [
+        { "pitch": 60, "code": "KeyQ" },
+        { "pitch": 62, "code": "KeyW" },
+        { "pitch": 64, "code": "KeyE" },
+        { "pitch": 65, "code": "KeyR" }
+      ]
+    },
+    {
+      "label": "低音谱号",
+      "keys": [
+        { "pitch": 67, "code": "KeyA" },
+        { "pitch": 69, "code": "KeyS" },
+        { "pitch": 71, "code": "KeyD" },
+        { "pitch": 72, "code": "KeyF" }
+      ]
+    }
+  ],
+  "timing": { "holdMs": 30, "minRepeatGapMs": 40, "sustain": false }
+}

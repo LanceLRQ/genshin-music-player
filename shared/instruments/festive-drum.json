@@ -1,9 +1,9 @@
 {
   "schemaVersion": 1,
   "id": "festive-drum",
-  "name": "节庆鼓",
+  "name": "荒泷·盛世豪鼓",
   "kind": "percussion",
-  "status": "unverified",
+  "status": "verified",
   "rows": [
     {
       "label": "鼓",

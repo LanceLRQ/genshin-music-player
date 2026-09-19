@@ -87,7 +87,7 @@ describe('App', () => {
     expect(await screen.findByText('无法连接后端')).toBeInTheDocument();
     expect(screen.getByText('未连接后端')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: '演奏' })).toBeInTheDocument();
-    expect(useInstrumentStore.getState().entries).toHaveLength(5);
+    expect(useInstrumentStore.getState().entries).toHaveLength(12);
     expect(spy).not.toHaveBeenCalled();
   });
 

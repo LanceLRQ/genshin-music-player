@@ -13,7 +13,7 @@ describe('buildPitchKeyMap', () => {
   });
 
   it('没有音高键的乐器报错', () => {
-    expect(() => buildPitchKeyMap(builtin('festive-drum'))).toThrow('乐器「节庆鼓」没有可用的音高键');
+    expect(() => buildPitchKeyMap(builtin('festive-drum'))).toThrow('乐器「荒泷·盛世豪鼓」没有可用的音高键');
   });
 });
 

@@ -1,8 +1,15 @@
+import banquetDrum from '../../../shared/instruments/banquet-drum.json';
+import eveningHorn from '../../../shared/instruments/evening-horn.json';
 import festiveDrum from '../../../shared/instruments/festive-drum.json';
 import floralZither from '../../../shared/instruments/floral-zither.json';
+import harmonyClavier from '../../../shared/instruments/harmony-clavier.json';
+import jujuDrum from '../../../shared/instruments/juju-drum.json';
+import lingeringEcho from '../../../shared/instruments/lingering-echo.json';
+import sprightlyLyre from '../../../shared/instruments/sprightly-lyre.json';
 import twoRowPrototype from '../../../shared/instruments/two-row-prototype.json';
 import vintageLyre from '../../../shared/instruments/vintage-lyre.json';
 import windsongLyre from '../../../shared/instruments/windsong-lyre.json';
+import yucoLyre from '../../../shared/instruments/yuco-lyre.json';
 import { InstrumentProfileSchema, type InstrumentProfile } from '../model/instrument';
 
 /** 模块加载时即做 schema 校验：内置配置写错会直接抛错，由测试兜底 */
@@ -12,6 +19,13 @@ export const BUILTIN_INSTRUMENTS: readonly InstrumentProfile[] = [
   vintageLyre,
   twoRowPrototype,
   festiveDrum,
+  yucoLyre,
+  harmonyClavier,
+  sprightlyLyre,
+  lingeringEcho,
+  eveningHorn,
+  jujuDrum,
+  banquetDrum,
 ].map((raw) => InstrumentProfileSchema.parse(raw));
 
 export interface InstrumentEntry {

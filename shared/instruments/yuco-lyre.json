@@ -1,9 +1,9 @@
 {
   "schemaVersion": 1,
-  "id": "two-row-prototype",
-  "name": "沃雅妮莎",
+  "id": "yuco-lyre",
+  "name": "悠可琴",
   "kind": "pitched",
-  "status": "verified",
+  "status": "unverified",
   "rows": [
     {
       "label": "高音谱号",
