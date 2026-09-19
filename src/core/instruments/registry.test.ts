@@ -91,23 +91,34 @@ describe('内置乐器', () => {
     expect(pitchesOf(horn)).toEqual([60, 62, 64, 65, 67, 69, 71, 72]);
   });
 
-  it('聚聚鼓与绮筵之鼓 8 键两行（QWIO/ASKL，左右两组咚/咔）', () => {
-    for (const id of ['juju-drum', 'banquet-drum']) {
-      const drum = builtin(id);
-      expect(drum.kind).toBe('percussion');
-      expect(drum.rows.flatMap((row) => row.keys.map((k) => k.code))).toEqual([
-        'KeyQ',
-        'KeyW',
-        'KeyI',
-        'KeyO',
-        'KeyA',
-        'KeyS',
-        'KeyK',
-        'KeyL',
-      ]);
-      expect(drum.rows[0].keys.map((k) => k.voice)).toEqual(['don', 'don-2', 'ka', 'ka-2']);
-      expect(drum.rows[1].keys.map((k) => k.voice)).toEqual(['don-3', 'don-4', 'ka-3', 'ka-4']);
-    }
+  it('聚聚鼓 4 键（左组 Q/A、右组 I/K，两音色）', () => {
+    const drum = builtin('juju-drum');
+    expect(drum.kind).toBe('percussion');
+    expect(drum.rows.flatMap((row) => row.keys.map((k) => k.code))).toEqual([
+      'KeyQ',
+      'KeyI',
+      'KeyA',
+      'KeyK',
+    ]);
+    expect(drum.rows[0].keys.map((k) => k.voice)).toEqual(['don', 'ka']);
+    expect(drum.rows[1].keys.map((k) => k.voice)).toEqual(['don-2', 'ka-2']);
+  });
+
+  it('绮筵之鼓 8 键（左组 QW/AS、右组 IO/KL，两音色）', () => {
+    const drum = builtin('banquet-drum');
+    expect(drum.kind).toBe('percussion');
+    expect(drum.rows.flatMap((row) => row.keys.map((k) => k.code))).toEqual([
+      'KeyQ',
+      'KeyW',
+      'KeyI',
+      'KeyO',
+      'KeyA',
+      'KeyS',
+      'KeyK',
+      'KeyL',
+    ]);
+    expect(drum.rows[0].keys.map((k) => k.voice)).toEqual(['don', 'don-2', 'ka', 'ka-2']);
+    expect(drum.rows[1].keys.map((k) => k.voice)).toEqual(['don-3', 'don-4', 'ka-3', 'ka-4']);
   });
 });
 
