@@ -110,6 +110,21 @@ export function InstrumentEditor({ profile, saved, onDirtyChange, onCancel, onDo
     });
   };
 
+  /** 音高类键在「单音 / 和弦」之间切换：清掉旧字段，给新字段一个可用初值 */
+  const switchKeyType = (rowIndex: number, keyIndex: number, mode: 'pitch' | 'chord') => {
+    updateKey(rowIndex, keyIndex, (target) => {
+      if (mode === 'chord' && target.chord === undefined) {
+        target.chord = [60, 64, 67];
+        target.label = '';
+        delete target.pitch;
+      } else if (mode === 'pitch' && target.pitch === undefined) {
+        target.pitch = 60;
+        delete target.chord;
+        delete target.label;
+      }
+    });
+  };
+
   const requestKind = (kind: string) => {
     if (!kind || kind === draft.kind) return;
     const hasKeys = draft.rows.some((row) => row.keys.length > 0);
@@ -319,12 +334,40 @@ export function InstrumentEditor({ profile, saved, onDirtyChange, onCancel, onDo
                       onCapture={(code) => updateKey(rowIndex, keyIndex, (target) => { target.code = code; })}
                     />
                     {draft.kind === 'pitched' ? (
-                      <PitchInput
-                        ariaLabel={`第 ${rowIndex + 1} 行第 ${keyIndex + 1} 个键的音高`}
-                        pitch={instrumentKey.pitch}
-                        invalid={errors.keys.has(`${rowIndex}-${keyIndex}`)}
-                        onCommit={(pitch) => updateKey(rowIndex, keyIndex, (target) => { target.pitch = pitch; })}
-                      />
+                      instrumentKey.chord === undefined ? (
+                        <>
+                          <KeyTypeToggle
+                            ariaLabel={`第 ${rowIndex + 1} 行第 ${keyIndex + 1} 个键的键类型`}
+                            value="pitch"
+                            onChange={(mode) => switchKeyType(rowIndex, keyIndex, mode)}
+                          />
+                          <PitchInput
+                            ariaLabel={`第 ${rowIndex + 1} 行第 ${keyIndex + 1} 个键的音高`}
+                            pitch={instrumentKey.pitch}
+                            invalid={errors.keys.has(`${rowIndex}-${keyIndex}`)}
+                            onCommit={(pitch) => updateKey(rowIndex, keyIndex, (target) => { target.pitch = pitch; })}
+                          />
+                        </>
+                      ) : (
+                        <>
+                          <KeyTypeToggle
+                            ariaLabel={`第 ${rowIndex + 1} 行第 ${keyIndex + 1} 个键的键类型`}
+                            value="chord"
+                            onChange={(mode) => switchKeyType(rowIndex, keyIndex, mode)}
+                          />
+                          <ChordLabelInput
+                            ariaLabel={`第 ${rowIndex + 1} 行第 ${keyIndex + 1} 个键的和弦名`}
+                            value={instrumentKey.label}
+                            onCommit={(label) => updateKey(rowIndex, keyIndex, (target) => { target.label = label; })}
+                          />
+                          <ChordNotesInput
+                            ariaLabel={`第 ${rowIndex + 1} 行第 ${keyIndex + 1} 个键的和弦构成音`}
+                            chord={instrumentKey.chord}
+                            invalid={errors.keys.has(`${rowIndex}-${keyIndex}`)}
+                            onCommit={(chord) => updateKey(rowIndex, keyIndex, (target) => { target.chord = chord; })}
+                          />
+                        </>
+                      )
                     ) : (
                       <Input
                         value={instrumentKey.voice ?? ''}
@@ -430,6 +473,93 @@ function NumberInput({ id, value, onCommit }: { id: string; value: number; onCom
         const parsed = Number(text);
         if (text.trim() !== '' && Number.isFinite(parsed)) onCommit(Math.round(parsed));
         else setText(String(value));
+      }}
+    />
+  );
+}
+
+/** 音高类键的类型切换：单音（pitch）或和弦（chord + label） */
+function KeyTypeToggle({ ariaLabel, value, onChange }: { ariaLabel: string; value: 'pitch' | 'chord'; onChange: (mode: 'pitch' | 'chord') => void }) {
+  return (
+    <ToggleGroup
+      type="single"
+      variant="outline"
+      size="sm"
+      aria-label={ariaLabel}
+      value={value}
+      onValueChange={(next) => {
+        if (next) onChange(next as 'pitch' | 'chord');
+      }}
+    >
+      <ToggleGroupItem value="pitch">单音</ToggleGroupItem>
+      <ToggleGroupItem value="chord">和弦</ToggleGroupItem>
+    </ToggleGroup>
+  );
+}
+
+/** 和弦名（如 C、Dm）；空字符串由 schema 的"和弦需要名称"校验兜底 */
+function ChordLabelInput({ ariaLabel, value, onCommit }: { ariaLabel: string; value: string | undefined; onCommit: (label: string) => void }) {
+  const [text, setText] = useState(value ?? '');
+  // 行的上移 / 下移 / 删除会复用同一位置的组件实例：外部值变化而本地文本对不上时同步显示
+  const [prev, setPrev] = useState(value);
+  if (prev !== value) {
+    setPrev(value);
+    setText(value ?? '');
+  }
+  return (
+    <Input
+      aria-label={ariaLabel}
+      value={text}
+      placeholder="C / Dm"
+      className="w-24"
+      onChange={(event) => setText(event.target.value)}
+      onBlur={() => onCommit(text.trim())}
+    />
+  );
+}
+
+function ChordNotesInput({
+  ariaLabel,
+  chord,
+  invalid,
+  onCommit,
+}: {
+  ariaLabel: string;
+  chord: number[];
+  invalid: boolean;
+  onCommit: (chord: number[]) => void;
+}) {
+  const format = (notes: number[]) => notes.map(midiToNoteName).join(' ');
+  const [text, setText] = useState(() => format(chord));
+  const [invalidText, setInvalidText] = useState(false);
+  const [prev, setPrev] = useState(chord);
+  if (prev !== chord) {
+    setPrev(chord);
+    if (text !== format(chord)) {
+      setText(format(chord));
+      setInvalidText(false);
+    }
+  }
+  return (
+    <Input
+      aria-label={ariaLabel}
+      value={text}
+      placeholder="C4 E4 G4（2–7 个音）"
+      className="w-56"
+      aria-invalid={(invalidText || invalid) || undefined}
+      onChange={(event) => setText(event.target.value)}
+      onBlur={() => {
+        const tokens = text.split(/[\s,，]+/).filter(Boolean);
+        const notes = tokens.map(parsePitchInput);
+        if (tokens.length < 2 || tokens.length > 7 || notes.some((note) => note === undefined)) {
+          setInvalidText(true);
+          return;
+        }
+        // schema 要求严格递增：提交前排序去重
+        const sorted = [...new Set(notes as number[])].sort((a, b) => a - b);
+        setInvalidText(false);
+        setText(format(sorted));
+        onCommit(sorted);
       }}
     />
   );

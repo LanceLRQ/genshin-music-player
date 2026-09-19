@@ -155,6 +155,14 @@ export const InstrumentProfileSchema = z
 export type InstrumentKey = z.infer<typeof InstrumentKeySchema>;
 export type InstrumentProfile = z.infer<typeof InstrumentProfileSchema>;
 
+/** 敲击音色的显示名：don → 咚、ka → 咔（含 don-2 等带序号的变体，多键鼓会用），其余原样 */
+export function voiceLabel(voice: string): string {
+  const match = /^(don|ka)(?:-(\d+))?$/.exec(voice);
+  if (!match) return voice;
+  const base = match[1] === 'don' ? '咚' : '咔';
+  return match[2] ? `${base}-${match[2]}` : base;
+}
+
 export type ValidationResult<T> = { ok: true; value: T } | { ok: false; errors: string[] };
 
 /** 校验乐器配置；错误格式为「字段路径：说明」（schema 层与业务层都已是中文） */

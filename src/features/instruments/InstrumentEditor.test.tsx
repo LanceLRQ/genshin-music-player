@@ -1,5 +1,5 @@
 import { clearMocks, mockIPC } from '@tauri-apps/api/mocks';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { toast } from 'sonner';
@@ -61,6 +61,25 @@ describe('InstrumentEditor', () => {
     await user.type(screen.getByLabelText('名称'), '二');
     expect(onDirtyChange).toHaveBeenLastCalledWith(true);
     expect(screen.getByText('有未保存的修改')).toBeInTheDocument();
+  });
+
+  it('和弦键显示和弦名与构成音输入，切换为单音后清空和弦字段', async () => {
+    const guitar: InstrumentProfile = { ...structuredClone(BUILTIN_INSTRUMENTS.find((p) => p.id === 'yuco-lyre')!), id: 'my-guitar' };
+    const { user } = renderEditor(guitar);
+    // 第一行第一键是 C 和弦：表单里是和弦名 + 构成音输入
+    expect(screen.getByLabelText('第 1 行第 1 个键的和弦名')).toHaveValue('C');
+    expect(screen.getByLabelText('第 1 行第 1 个键的和弦构成音')).toHaveValue('C3 E3 G3');
+    // 修改构成音：乱序输入自动排序去重后提交
+    const notes = screen.getByLabelText('第 1 行第 1 个键的和弦构成音');
+    await user.clear(notes);
+    await user.type(notes, '60 64 67 64');
+    fireEvent.blur(notes);
+    expect(screen.getByLabelText('第 1 行第 1 个键的和弦构成音')).toHaveValue('C4 E4 G4');
+    // 切回单音：和弦字段消失，音高输入出现
+    const typeToggle = screen.getByRole('radiogroup', { name: '第 1 行第 1 个键的键类型' });
+    await user.click(within(typeToggle).getByText('单音'));
+    expect(screen.queryByLabelText('第 1 行第 1 个键的和弦名')).not.toBeInTheDocument();
+    expect(screen.getByLabelText('第 1 行第 1 个键的音高')).toHaveValue('C4 (60)');
   });
 
   it('名称为空时给出中文错误并禁用保存，改回后恢复', async () => {

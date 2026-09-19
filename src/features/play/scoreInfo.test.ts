@@ -76,8 +76,9 @@ describe('sourceLabel / voiceLabel', () => {
     expect(sourceLabel(source)).toBe(label);
   });
 
-  it('咚咔显示中文，其他音色原样', () => {
+  it('咚咔显示中文，带序号变体也翻译，其他音色原样', () => {
     expect([voiceLabel('don'), voiceLabel('ka'), voiceLabel('crash')]).toEqual(['咚', '咔', 'crash']);
+    expect([voiceLabel('don-2'), voiceLabel('ka-3'), voiceLabel('don-4')]).toEqual(['咚-2', '咔-3', '咚-4']);
   });
 });
 

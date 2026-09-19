@@ -24,7 +24,12 @@ function Keycap({ profile, code, active, disabled, onPlay }: {
 }) {
   const key = profile.rows.flatMap((row) => row.keys).find((candidate) => candidate.code === code);
   if (!key) return null;
-  const sub = key.pitch !== undefined ? midiToNoteName(key.pitch) : voiceLabel(key.voice ?? '');
+  const sub =
+    key.pitch !== undefined
+      ? midiToNoteName(key.pitch)
+      : key.chord !== undefined
+        ? (key.label ?? '和弦')
+        : voiceLabel(key.voice ?? '');
   return (
     <button
       type="button"
