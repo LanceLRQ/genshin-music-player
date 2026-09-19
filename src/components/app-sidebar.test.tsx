@@ -3,7 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { act } from 'react';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { SidebarProvider } from '@/components/ui/sidebar';
-import { AppError, DEFAULT_SETTINGS, type EnvInfo } from '@/ipc/types';
+import { AppError, type EnvInfo } from '@/ipc/types';
 import { useEnvStore } from '@/stores/envStore';
 import { useNavigationStore } from '@/stores/navigationStore';
 import { useSettingsStore } from '@/stores/settingsStore';
@@ -72,16 +72,10 @@ describe('AppSidebar', () => {
     expect(screen.getByText('未连接后端')).toBeInTheDocument();
   });
 
-  it('显示设置中的全局热键，设置加载前不显示', () => {
+  it('不显示全局热键提示（已移到演奏页控制条）', () => {
     renderSidebar();
     expect(screen.queryByText('开始/暂停')).not.toBeInTheDocument();
-    act(() =>
-      useSettingsStore.setState({ settings: { ...DEFAULT_SETTINGS, hotkeys: { toggle: 'CmdOrCtrl+F8', stop: 'F10' } } }),
-    );
-    act(() => useEnvStore.setState({ env: windowsEnv, status: 'ready' }));
-    expect(screen.getByText('Ctrl+F8')).toBeInTheDocument();
-    expect(screen.getByText('F10')).toBeInTheDocument();
-    expect(screen.getByText('停止')).toBeInTheDocument();
+    expect(screen.queryByText('停止')).not.toBeInTheDocument();
   });
 
   it('演奏进行中且不在演奏页时，"演奏"入口显示状态点', () => {

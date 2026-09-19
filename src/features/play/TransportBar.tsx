@@ -23,7 +23,7 @@ interface TransportBarProps {
   onSoloCancel: () => void;
 }
 
-/** 播放控制条：按钮、状态行、热键提示、单轨徽章与失去焦点警示（设计 01 第 4.9、4.10 节） */
+/** 播放控制条：按钮、状态与热键提示合并为一行；单轨徽章与失去焦点警示按需另起一行（设计 01 第 4.9、4.10 节） */
 export function TransportBar({ soloTrackName, onPreviewToggle, onPlay, onPause, onStop, onSoloCancel }: TransportBarProps) {
   const playerState = useTransportStore((state) => state.playerState);
   const previewing = useTransportStore((state) => state.previewing);
@@ -42,7 +42,7 @@ export function TransportBar({ soloTrackName, onPreviewToggle, onPlay, onPause, 
     toggleLabel,
   });
   return (
-    <div className="flex flex-col gap-3">
+    <div className="flex flex-col gap-2">
       {playerState.kind === 'paused' && playerState.reason === 'focusLost' && (
         <Alert variant="destructive">
           <TriangleAlert />
@@ -62,30 +62,28 @@ export function TransportBar({ soloTrackName, onPreviewToggle, onPlay, onPause, 
           </Badge>
         </div>
       )}
-      <div className="flex flex-wrap items-center gap-2">
-        <Button variant="secondary" disabled={!view.preview.enabled} onClick={onPreviewToggle}>
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+        <Button variant="secondary" size="sm" disabled={!view.preview.enabled} onClick={onPreviewToggle}>
           <Headphones className="size-4" />
           {view.preview.label}
         </Button>
-        <Button disabled={!view.play.enabled} onClick={onPlay}>
+        <Button size="sm" disabled={!view.play.enabled} onClick={onPlay}>
           <Play className="size-4" />
           {view.play.label}
         </Button>
-        <Button variant="secondary" disabled={!view.pause.enabled} onClick={onPause}>
+        <Button variant="secondary" size="sm" disabled={!view.pause.enabled} onClick={onPause}>
           <Pause className="size-4" />
           {view.pause.label}
         </Button>
-        <Button variant="outline" disabled={!view.stop.enabled} onClick={onStop}>
+        <Button variant="outline" size="sm" disabled={!view.stop.enabled} onClick={onStop}>
           <Square className="size-4" />
           {view.stop.label}
         </Button>
-      </div>
-      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm">
-        <span className="flex items-center gap-1.5">
+        <span className="flex items-center gap-1.5 text-sm">
           <span className={cn('size-2 rounded-full', STATUS_DOT_CLASS[view.status.tone])} />
           <span>{view.status.text}</span>
         </span>
-        <span className="flex items-center gap-1.5 text-muted-foreground">
+        <span className="flex items-center gap-1.5 text-sm text-muted-foreground">
           <Kbd>{toggleLabel}</Kbd>
           开始/暂停 ·
           <Kbd>{displayShortcut(hotkeys.stop, platform)}</Kbd>
