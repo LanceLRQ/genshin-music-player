@@ -13,6 +13,7 @@
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
     "tauri": "tauri",
+    "build:portable": "tauri build --no-bundle",
     "gen:test-assets": "node scripts/gen-test-assets.ts"
   },
   "dependencies": {
