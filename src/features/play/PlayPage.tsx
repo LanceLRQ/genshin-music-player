@@ -1,12 +1,13 @@
 import { getCurrentWebview } from '@tauri-apps/api/webview';
-import { AudioLines, FileText, FileUp, FolderOpen, Keyboard } from 'lucide-react';
+import { AudioLines, FileText, FileUp, FolderOpen, Keyboard, RotateCcw } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { previewPlayer } from '@/audio/previewPlayer';
 import { adapt } from '@/core/adapter/adapt';
 import type { Score } from '@/core/model/score';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardAction, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/components/ui/empty';
 import { Label } from '@/components/ui/label';
 import { Slider } from '@/components/ui/slider';
@@ -330,31 +331,48 @@ export function PlayPage() {
             </div>
           </div>
         )}
-        <div className="@container flex min-w-0 flex-1 flex-col gap-3 p-4 pb-0">
+        {/* 右栏整体滚动：乐谱头/琴键/进度条取自然高度，演奏参数卡不再被压缩成窄条 */}
+        <div className="@container flex min-w-0 flex-1 flex-col gap-3 overflow-y-auto p-4 pb-0">
           {hasScore ? (
             <>
               <ScoreHeader score={score} />
               <VirtualKeyboard />
               <TimelineBar />
               <RangeControls locked={locked} />
-              {/* 窄容器退单列；行高约束为 minmax(0,1fr)，单列时两卡各自内滚、不撑爆页面 */}
-              <div className="grid min-h-0 flex-1 auto-rows-[minmax(0,1fr)] grid-cols-1 gap-3 @[560px]:grid-cols-2">
-                <div className="flex min-h-0 flex-col gap-3 overflow-y-auto pr-1">
-                  <AdaptOptionsPanel
-                    profile={profile}
-                    options={options}
-                    manual={manual}
-                    locked={locked}
-                    onChange={(next) => useAdaptStore.getState().setOptions(next)}
-                    onReset={() => useAdaptStore.getState().resetToRecommended(score, profile, sourceInstrumentId ?? undefined)}
-                  />
-                </div>
-                <Card className="min-h-0 overflow-hidden">
-                  <CardHeader className="px-3 py-2">
-                    <CardTitle className="text-sm">演奏控制</CardTitle>
-                  </CardHeader>
-                  <CardContent className="min-h-0 overflow-y-auto px-3 pb-3">
-                    <div className="flex flex-col gap-3">
+              {/* 合并的演奏参数卡：内容少时撑满剩余空间，多时随右栏滚动；窄容器（<560px）两节纵向堆叠 */}
+              <Card className="flex-1">
+                <CardHeader className="px-3 py-2">
+                  <CardTitle className="text-sm">演奏参数</CardTitle>
+                  <CardAction className="flex items-center gap-2">
+                    {manual && (
+                      <>
+                        <Badge variant="secondary">已手动调整</Badge>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-7 gap-1 px-2 text-xs"
+                          onClick={() => useAdaptStore.getState().resetToRecommended(score, profile, sourceInstrumentId ?? undefined)}
+                        >
+                          <RotateCcw className="size-3.5" />
+                          恢复自动推荐
+                        </Button>
+                      </>
+                    )}
+                  </CardAction>
+                </CardHeader>
+                <CardContent className="px-3 pb-3">
+                  <div className="grid gap-3 @[560px]:grid-cols-2">
+                    <div className="flex min-w-0 flex-col gap-3">
+                      <AdaptOptionsPanel
+                        profile={profile}
+                        options={options}
+                        locked={locked}
+                        onChange={(next) => useAdaptStore.getState().setOptions(next)}
+                      />
+                    </div>
+                    {/* 宽容器时右节用左边框与左节分隔 */}
+                    <div className="flex min-w-0 flex-col gap-3 @[560px]:border-l @[560px]:pl-6">
+                      <span className="text-sm font-medium">演奏控制</span>
                       <div className="flex items-center gap-3">
                         <span className="w-14 shrink-0 text-sm">速度</span>
                         <Slider
@@ -401,9 +419,9 @@ export function PlayPage() {
                       </div>
                       <OutputDeviceSelect />
                     </div>
-                  </CardContent>
-                </Card>
-              </div>
+                  </div>
+                </CardContent>
+              </Card>
               {/* 控制条占满一行，统计行独占下一行；统计行首次演奏结束才出现，底栏高度只增高一次，可接受 */}
               <div className="sticky bottom-0 -mx-4 flex flex-col gap-2 border-t bg-background/95 px-4 py-3 backdrop-blur">
                 <TransportBar

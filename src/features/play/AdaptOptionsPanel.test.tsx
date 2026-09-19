@@ -13,10 +13,8 @@ function renderPanel(overrides: Partial<Parameters<typeof AdaptOptionsPanel>[0]>
   const props = {
     profile: lyre,
     options,
-    manual: false,
     locked: false,
     onChange: vi.fn(),
-    onReset: vi.fn(),
     ...overrides,
   };
   render(<AdaptOptionsPanel {...props} />);
@@ -24,9 +22,10 @@ function renderPanel(overrides: Partial<Parameters<typeof AdaptOptionsPanel>[0]>
 }
 
 describe('AdaptOptionsPanel（音高类）', () => {
-  it('显示移调、八度、黑键、超音域，展开高级后显示复音上限与和弦窗口', async () => {
+  it('显示小节标题与移调、八度、黑键、超音域，展开高级后显示复音上限与和弦窗口', async () => {
     const user = userEvent.setup();
     renderPanel();
+    expect(screen.getByText('适配参数')).toBeInTheDocument();
     expect(screen.getByText('移调')).toBeInTheDocument();
     expect(screen.getByText('八度')).toBeInTheDocument();
     expect(screen.getByText('黑键')).toBeInTheDocument();
@@ -81,21 +80,5 @@ describe('AdaptOptionsPanel（敲击类）', () => {
     await user.type(input, 'C4');
     await user.tab();
     expect(props.onChange).toHaveBeenLastCalledWith(expect.objectContaining({ percussionSplitPitch: 60 }));
-  });
-});
-
-describe('AdaptOptionsPanel（手动调整）', () => {
-  it('手动调整后出现徽章与恢复按钮，点击回调 onReset', async () => {
-    const props = renderPanel({ manual: true });
-    expect(screen.getByText('已手动调整')).toBeInTheDocument();
-    const user = userEvent.setup();
-    await user.click(screen.getByRole('button', { name: /恢复自动推荐/ }));
-    expect(props.onReset).toHaveBeenCalledTimes(1);
-  });
-
-  it('没有手动调整时不显示徽章与恢复按钮', () => {
-    renderPanel({ manual: false });
-    expect(screen.queryByText('已手动调整')).not.toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: /恢复自动推荐/ })).not.toBeInTheDocument();
   });
 });

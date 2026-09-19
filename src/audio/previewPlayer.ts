@@ -122,6 +122,23 @@ export class PreviewPlayer {
     session.held.clear();
   }
 
+  /**
+   * 试听中跳到执行时间轴的 positionMs 处继续。cycleStart 与目标位置对齐、scheduledUntil
+   * 跳过之前的事件即可复用 lookahead 调度（循环播放的换轮逻辑同样成立）。
+   * 跨过 seek 点仍在按住的键不会补按（缺 down 事件），从下一次按键起正常。
+   */
+  seek(positionMs: number): void {
+    const session = this.session;
+    const context = this.context;
+    if (!session || !context) return;
+    const clamped = Math.min(Math.max(positionMs, 0), session.execution.durationMs);
+    for (const voice of session.voices) voice.stop();
+    session.voices.clear();
+    session.held.clear();
+    const nowMs = context.currentTime * 1000;
+    session.cursor = { cycleStartMs: nowMs + START_DELAY_MS - clamped, scheduledUntilMs: clamped };
+  }
+
   /** 关闭 AudioContext，释放音频设备 */
   async dispose(): Promise<void> {
     this.stop();

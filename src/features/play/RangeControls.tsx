@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { RotateCcw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -46,7 +47,7 @@ function RangeTimeInput({ value, locked, onCommit, ariaLabel }: {
   return (
     <Input
       aria-label={ariaLabel}
-      className={cn('w-20 text-xs tabular-nums', invalid && 'border-destructive')}
+      className={cn('w-[4.5rem] text-xs tabular-nums', invalid && 'border-destructive')}
       inputMode="numeric"
       value={draft ?? formatTime(value)}
       disabled={locked}
@@ -71,7 +72,7 @@ interface RangeControlsProps {
   locked: boolean;
 }
 
-/** 演奏区间与循环（设计 01 第 4.8 节） */
+/** 演奏区间与循环（设计 01 第 4.8 节）：单行布局，最窄容器下留给滑块的空间保底 min-w-14 不溢出 */
 export function RangeControls({ locked }: RangeControlsProps) {
   const score = useScoreStore((state) => state.score);
   const range = useTransportStore((state) => state.range);
@@ -80,70 +81,71 @@ export function RangeControls({ locked }: RangeControlsProps) {
   const total = scoreDurationMs(score);
   const setRange = (startMs: number, endMs: number) => useTransportStore.getState().setRange({ startMs, endMs });
   return (
-    <div className="flex flex-col gap-2">
-      <div className="flex items-center gap-3">
-        <Label className="w-14 shrink-0 text-sm">区间</Label>
-        <Slider
-          className="flex-1"
-          min={0}
-          max={total}
-          step={MIN_RANGE_GAP_MS}
-          value={[range.startMs, range.endMs]}
+    <div className="flex items-center gap-3">
+      <Label className="w-14 shrink-0 text-sm">区间</Label>
+      <Slider
+        className="min-w-14 flex-1"
+        min={0}
+        max={total}
+        step={MIN_RANGE_GAP_MS}
+        value={[range.startMs, range.endMs]}
+        disabled={locked}
+        onValueChange={([start, end]) => {
+          const next = clampRange([start, end], start === range.startMs ? 'end' : 'start', total, [
+            range.startMs,
+            range.endMs,
+          ]);
+          setRange(next[0], next[1]);
+        }}
+      />
+      <RangeTimeInput
+        ariaLabel="区间开始时间"
+        value={range.startMs}
+        locked={locked}
+        onCommit={(raw) => {
+          const parsed = parseTimeInput(raw, Math.max(range.endMs - MIN_RANGE_GAP_MS, 0));
+          if (parsed === null) return false;
+          const next = clampRange([parsed, range.endMs], 'start', total, [range.startMs, range.endMs]);
+          setRange(next[0], next[1]);
+          return true;
+        }}
+      />
+      <span className="text-muted-foreground">—</span>
+      <RangeTimeInput
+        ariaLabel="区间结束时间"
+        value={range.endMs}
+        locked={locked}
+        onCommit={(raw) => {
+          const parsed = parseTimeInput(raw, total);
+          if (parsed === null || parsed <= range.startMs) return false;
+          const next = clampRange([range.startMs, parsed], 'end', total, [range.startMs, range.endMs]);
+          setRange(next[0], next[1]);
+          return true;
+        }}
+      />
+      <div className="flex shrink-0 items-center gap-2">
+        <Switch
+          id="play-loop"
+          aria-label="循环播放"
+          checked={loop}
           disabled={locked}
-          onValueChange={([start, end]) => {
-            const next = clampRange([start, end], start === range.startMs ? 'end' : 'start', total, [
-              range.startMs,
-              range.endMs,
-            ]);
-            setRange(next[0], next[1]);
-          }}
+          onCheckedChange={(checked) => useTransportStore.getState().setLoop(checked)}
         />
-        <Button variant="ghost" size="sm" className="h-7 px-2 text-xs" disabled={locked} onClick={() => setRange(0, total)}>
-          重置区间
-        </Button>
+        <Label htmlFor="play-loop" className="text-sm">
+          循环
+        </Label>
       </div>
-      <div className="flex items-center gap-3">
-        <span className="w-14 shrink-0" />
-        <div className="flex flex-1 items-center gap-2">
-          <RangeTimeInput
-            ariaLabel="区间开始时间"
-            value={range.startMs}
-            locked={locked}
-            onCommit={(raw) => {
-              const parsed = parseTimeInput(raw, Math.max(range.endMs - MIN_RANGE_GAP_MS, 0));
-              if (parsed === null) return false;
-              const next = clampRange([parsed, range.endMs], 'start', total, [range.startMs, range.endMs]);
-              setRange(next[0], next[1]);
-              return true;
-            }}
-          />
-          <span className="text-muted-foreground">—</span>
-          <RangeTimeInput
-            ariaLabel="区间结束时间"
-            value={range.endMs}
-            locked={locked}
-            onCommit={(raw) => {
-              const parsed = parseTimeInput(raw, total);
-              if (parsed === null || parsed <= range.startMs) return false;
-              const next = clampRange([range.startMs, parsed], 'end', total, [range.startMs, range.endMs]);
-              setRange(next[0], next[1]);
-              return true;
-            }}
-          />
-          <div className="flex flex-1 items-center justify-end gap-2">
-            <Switch
-              id="play-loop"
-              aria-label="循环播放"
-              checked={loop}
-              disabled={locked}
-              onCheckedChange={(checked) => useTransportStore.getState().setLoop(checked)}
-            />
-            <Label htmlFor="play-loop" className="text-sm">
-              循环
-            </Label>
-          </div>
-        </div>
-      </div>
+      <Button
+        variant="ghost"
+        size="icon"
+        className="size-7 shrink-0"
+        aria-label="重置区间"
+        title="重置区间"
+        disabled={locked}
+        onClick={() => setRange(0, total)}
+      >
+        <RotateCcw className="size-3.5" />
+      </Button>
     </div>
   );
 }

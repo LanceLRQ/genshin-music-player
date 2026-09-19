@@ -13,6 +13,7 @@ vi.mock('@/audio/previewPlayer', () => ({
     stop: vi.fn(),
     playKey: vi.fn(),
     setVolume: vi.fn(),
+    seek: vi.fn(),
     playing: false,
   },
 }));
@@ -225,6 +226,22 @@ describe('transportStore（试听）', () => {
       expect.objectContaining({ onPosition: expect.any(Function), onEnded: expect.any(Function) }),
     );
     expect(useTransportStore.getState().previewing).toBe(true);
+  });
+
+  it('seekPreview 试听中跳转并回写位置，越界收敛到时长，不在试听时忽略', async () => {
+    countBuilds();
+    await useTransportStore.getState().syncExecution(timeline);
+    useTransportStore.getState().startPreview(lyre);
+    useTransportStore.getState().seekPreview(1250);
+    expect(vi.mocked(previewPlayer.seek)).toHaveBeenLastCalledWith(1000);
+    expect(useTransportStore.getState().previewPositionMs).toBe(1000);
+    useTransportStore.getState().seekPreview(200);
+    expect(vi.mocked(previewPlayer.seek)).toHaveBeenLastCalledWith(200);
+    expect(useTransportStore.getState().previewPositionMs).toBe(200);
+    vi.mocked(previewPlayer.seek).mockClear();
+    useTransportStore.setState({ previewing: false });
+    useTransportStore.getState().seekPreview(500);
+    expect(previewPlayer.seek).not.toHaveBeenCalled();
   });
 
   it('试听自然结束：清试听状态，单轨试听结束后自动恢复主时间线', async () => {

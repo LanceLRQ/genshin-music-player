@@ -83,6 +83,8 @@ export interface TransportState {
   startPreview: (profile: InstrumentProfile) => void;
   /** 停止试听 */
   stopPreview: () => Promise<void>;
+  /** 试听中跳转到执行时间轴的指定位置（毫秒）；不在试听时忽略 */
+  seekPreview: (positionMs: number) => void;
   /** 试听自然结束时由播放器回调 */
   finishPreview: () => Promise<void>;
   setPreviewPosition: (positionMs: number) => void;
@@ -193,6 +195,13 @@ export const useTransportStore = create<TransportState>()((set, get) => ({
     previewPlayer.stop();
     set({ previewing: false, previewPositionMs: 0 });
     if (get().solo?.mode === 'preview') await get().endSolo();
+  },
+  seekPreview: (positionMs) => {
+    const { execution, previewing } = get();
+    if (!execution || !previewing) return;
+    const clamped = Math.min(Math.max(positionMs, 0), execution.durationMs);
+    previewPlayer.seek(clamped);
+    set({ previewPositionMs: clamped });
   },
   finishPreview: async () => {
     if (!get().previewing) return;

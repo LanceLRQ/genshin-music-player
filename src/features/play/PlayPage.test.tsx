@@ -69,19 +69,47 @@ describe('PlayPage', () => {
     expect(screen.queryByText('目标乐器')).not.toBeInTheDocument();
   });
 
-  it('导入乐谱后显示左栏各卡、虚拟琴键与乐谱页头', async () => {
+  it('导入乐谱后显示左栏各卡、合并的演奏参数卡、虚拟琴键与乐谱页头', async () => {
     mockBackend();
     useScoreStore.getState().setScore(score);
     useAdaptStore.getState().resetToRecommended(score, lyre);
     render(<PlayPage />);
     expect(await screen.findByText('目标乐器')).toBeInTheDocument();
     expect(screen.getByText('音轨')).toBeInTheDocument();
+    // 适配参数与演奏控制合并进同一张「演奏参数」卡，各自保留小节标题
+    expect(screen.getByText('演奏参数')).toBeInTheDocument();
     expect(screen.getByText('适配参数')).toBeInTheDocument();
+    expect(screen.getByText('演奏控制')).toBeInTheDocument();
     expect(screen.getByText('适配结果')).toBeInTheDocument();
     expect(screen.getByText('测试曲')).toBeInTheDocument();
     expect(screen.getByText('MIDI')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: '键帽 Q C5' })).toBeInTheDocument();
     expect(await screen.findByRole('button', { name: '演奏' })).toBeEnabled();
+  });
+
+  it('手动调整后演奏参数卡头出现徽章与恢复按钮，点击恢复自动推荐', async () => {
+    mockBackend();
+    useScoreStore.getState().setScore(score);
+    useAdaptStore.getState().resetToRecommended(score, lyre);
+    const recommended = useAdaptStore.getState().options!;
+    // 手动修改参数 → 标记 manual
+    act(() => useAdaptStore.getState().setOptions({ ...recommended, transpose: recommended.transpose + 2 }));
+    const user = userEvent.setup();
+    render(<PlayPage />);
+    expect(screen.getByText('已手动调整')).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: /恢复自动推荐/ }));
+    expect(useAdaptStore.getState().manual).toBe(false);
+    expect(useAdaptStore.getState().options).toEqual(recommended);
+  });
+
+  it('没有手动调整时不显示徽章与恢复按钮', async () => {
+    mockBackend();
+    useScoreStore.getState().setScore(score);
+    useAdaptStore.getState().resetToRecommended(score, lyre);
+    render(<PlayPage />);
+    await screen.findByText('演奏参数');
+    expect(screen.queryByText('已手动调整')).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /恢复自动推荐/ })).not.toBeInTheDocument();
   });
 
   it('点击演奏调用 play 命令', async () => {

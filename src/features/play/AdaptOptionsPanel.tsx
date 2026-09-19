@@ -1,9 +1,7 @@
-import { ChevronRight, Minus, Plus, RotateCcw } from 'lucide-react';
+import { ChevronRight, Minus, Plus } from 'lucide-react';
 import { useState } from 'react';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { ButtonGroup } from '@/components/ui/button-group';
-import { Card, CardAction, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Input } from '@/components/ui/input';
 import { Slider } from '@/components/ui/slider';
@@ -21,11 +19,9 @@ const MANUAL_SPLIT_PITCH = 60;
 interface AdaptOptionsPanelProps {
   profile: InstrumentProfile;
   options: AdaptOptions;
-  manual: boolean;
   locked: boolean;
   /** 手动修改参数（页面写回 adaptStore 并标记 manual） */
   onChange: (options: AdaptOptions) => void;
-  onReset: () => void;
 }
 
 interface StepperProps {
@@ -144,126 +140,111 @@ function SplitPitchRow({ auto, value, locked, onToggle, onCommit }: SplitPitchRo
   );
 }
 
-/** 适配参数卡（设计 01 第 4.5 节）；音高类与敲击类显示不同的参数集合 */
-export function AdaptOptionsPanel({ profile, options, manual, locked, onChange, onReset }: AdaptOptionsPanelProps) {
+/** 适配参数内容片段（设计 01 第 4.5 节）：由演奏参数卡承载卡片样式，音高类与敲击类显示不同的参数集合 */
+export function AdaptOptionsPanel({ profile, options, locked, onChange }: AdaptOptionsPanelProps) {
   const [advancedOpen, setAdvancedOpen] = useState(false);
   const autoSplitFromProps = options.percussionSplitPitch === undefined;
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>适配参数</CardTitle>
-        <CardAction className="flex items-center gap-2">
-          {manual && (
-            <>
-              <Badge variant="secondary">已手动调整</Badge>
-              <Button variant="ghost" size="sm" className="h-7 gap-1 px-2 text-xs" onClick={onReset}>
-                <RotateCcw className="size-3.5" />
-                恢复自动推荐
-              </Button>
-            </>
-          )}
-        </CardAction>
-      </CardHeader>
-      <CardContent className="flex flex-col gap-3">
-        {profile.kind === 'pitched' ? (
-          <>
-            <Stepper
-              label="移调"
-              unit="半音"
-              value={options.transpose}
-              min={-11}
-              max={11}
-              locked={locked}
-              onChange={(transpose) => onChange({ ...options, transpose })}
-            />
-            <Stepper
-              label="八度"
-              value={options.octaveShift}
-              min={-3}
-              max={3}
-              locked={locked}
-              onChange={(octaveShift) => onChange({ ...options, octaveShift })}
-            />
-            <div className="flex items-center gap-3">
-              <span className="w-14 shrink-0 text-sm">黑键</span>
-              <ToggleGroup
-                type="single"
-                variant="outline"
-                size="sm"
-                value={options.blackKeyPolicy}
-                disabled={locked}
-                onValueChange={(value) => {
-                  if (value === 'skip' || value === 'nearest') onChange({ ...options, blackKeyPolicy: value });
-                }}
-              >
-                <ToggleGroupItem value="skip">跳过</ToggleGroupItem>
-                <ToggleGroupItem value="nearest">就近取音</ToggleGroupItem>
-              </ToggleGroup>
-            </div>
-            <div className="flex items-center gap-3">
-              <span className="w-14 shrink-0 text-sm">超音域</span>
-              <ToggleGroup
-                type="single"
-                variant="outline"
-                size="sm"
-                value={options.outOfRangePolicy}
-                disabled={locked}
-                onValueChange={(value) => {
-                  if (value === 'fold' || value === 'drop') onChange({ ...options, outOfRangePolicy: value });
-                }}
-              >
-                <ToggleGroupItem value="fold">按八度折回</ToggleGroupItem>
-                <ToggleGroupItem value="drop">丢弃</ToggleGroupItem>
-              </ToggleGroup>
-            </div>
-          </>
-        ) : (
-          <SplitPitchRow
-            key={autoSplitFromProps ? 'auto' : 'manual'}
-            auto={autoSplitFromProps}
-            value={options.percussionSplitPitch}
+    <>
+      <span className="text-sm font-medium">适配参数</span>
+      {profile.kind === 'pitched' ? (
+        <>
+          <Stepper
+            label="移调"
+            unit="半音"
+            value={options.transpose}
+            min={-11}
+            max={11}
             locked={locked}
-            onToggle={(auto) => onChange({ ...options, percussionSplitPitch: auto ? undefined : MANUAL_SPLIT_PITCH })}
-            onCommit={(percussionSplitPitch) => onChange({ ...options, percussionSplitPitch })}
+            onChange={(transpose) => onChange({ ...options, transpose })}
           />
-        )}
-        <Collapsible open={advancedOpen} onOpenChange={setAdvancedOpen}>
-          <CollapsibleTrigger asChild>
-            <Button variant="ghost" size="sm" className="w-fit gap-1 px-2 text-muted-foreground">
-              <ChevronRight className={cn('size-4 transition-transform', advancedOpen && 'rotate-90')} />
-              高级
-            </Button>
-          </CollapsibleTrigger>
-          <CollapsibleContent className="flex flex-col gap-3 pt-2">
-            <div className="flex items-center gap-3">
-              <span className="w-14 shrink-0 text-sm">复音上限</span>
-              <Slider
-                className="flex-1"
-                min={1}
-                max={6}
-                step={1}
-                value={[options.maxPolyphony]}
-                disabled={locked}
-                onValueChange={([maxPolyphony]) => onChange({ ...options, maxPolyphony })}
-              />
-              <span className="w-6 text-right text-sm tabular-nums">{options.maxPolyphony}</span>
-            </div>
-            <div className="flex items-center gap-3">
-              <span className="w-14 shrink-0 text-sm">和弦窗口</span>
-              <Slider
-                className="flex-1"
-                min={0}
-                max={50}
-                step={5}
-                value={[options.chordWindowMs]}
-                disabled={locked}
-                onValueChange={([chordWindowMs]) => onChange({ ...options, chordWindowMs })}
-              />
-              <span className="w-12 text-right text-sm tabular-nums">{options.chordWindowMs} ms</span>
-            </div>
-          </CollapsibleContent>
-        </Collapsible>
-      </CardContent>
-    </Card>
+          <Stepper
+            label="八度"
+            value={options.octaveShift}
+            min={-3}
+            max={3}
+            locked={locked}
+            onChange={(octaveShift) => onChange({ ...options, octaveShift })}
+          />
+          <div className="flex items-center gap-3">
+            <span className="w-14 shrink-0 text-sm">黑键</span>
+            <ToggleGroup
+              type="single"
+              variant="outline"
+              size="sm"
+              value={options.blackKeyPolicy}
+              disabled={locked}
+              onValueChange={(value) => {
+                if (value === 'skip' || value === 'nearest') onChange({ ...options, blackKeyPolicy: value });
+              }}
+            >
+              <ToggleGroupItem value="skip">跳过</ToggleGroupItem>
+              <ToggleGroupItem value="nearest">就近取音</ToggleGroupItem>
+            </ToggleGroup>
+          </div>
+          <div className="flex items-center gap-3">
+            <span className="w-14 shrink-0 text-sm">超音域</span>
+            <ToggleGroup
+              type="single"
+              variant="outline"
+              size="sm"
+              value={options.outOfRangePolicy}
+              disabled={locked}
+              onValueChange={(value) => {
+                if (value === 'fold' || value === 'drop') onChange({ ...options, outOfRangePolicy: value });
+              }}
+            >
+              <ToggleGroupItem value="fold">按八度折回</ToggleGroupItem>
+              <ToggleGroupItem value="drop">丢弃</ToggleGroupItem>
+            </ToggleGroup>
+          </div>
+        </>
+      ) : (
+        <SplitPitchRow
+          key={autoSplitFromProps ? 'auto' : 'manual'}
+          auto={autoSplitFromProps}
+          value={options.percussionSplitPitch}
+          locked={locked}
+          onToggle={(auto) => onChange({ ...options, percussionSplitPitch: auto ? undefined : MANUAL_SPLIT_PITCH })}
+          onCommit={(percussionSplitPitch) => onChange({ ...options, percussionSplitPitch })}
+        />
+      )}
+      <Collapsible open={advancedOpen} onOpenChange={setAdvancedOpen}>
+        <CollapsibleTrigger asChild>
+          <Button variant="ghost" size="sm" className="w-fit gap-1 px-2 text-muted-foreground">
+            <ChevronRight className={cn('size-4 transition-transform', advancedOpen && 'rotate-90')} />
+            高级
+          </Button>
+        </CollapsibleTrigger>
+        <CollapsibleContent className="flex flex-col gap-3 pt-2">
+          <div className="flex items-center gap-3">
+            <span className="w-14 shrink-0 text-sm">复音上限</span>
+            <Slider
+              className="flex-1"
+              min={1}
+              max={6}
+              step={1}
+              value={[options.maxPolyphony]}
+              disabled={locked}
+              onValueChange={([maxPolyphony]) => onChange({ ...options, maxPolyphony })}
+            />
+            <span className="w-6 text-right text-sm tabular-nums">{options.maxPolyphony}</span>
+          </div>
+          <div className="flex items-center gap-3">
+            <span className="w-14 shrink-0 text-sm">和弦窗口</span>
+            <Slider
+              className="flex-1"
+              min={0}
+              max={50}
+              step={5}
+              value={[options.chordWindowMs]}
+              disabled={locked}
+              onValueChange={([chordWindowMs]) => onChange({ ...options, chordWindowMs })}
+            />
+            <span className="w-12 text-right text-sm tabular-nums">{options.chordWindowMs} ms</span>
+          </div>
+        </CollapsibleContent>
+      </Collapsible>
+    </>
   );
 }
