@@ -194,7 +194,7 @@ export function InstrumentsPage() {
   };
 
   return (
-    <div className="flex min-h-0 flex-1">
+    <div className="flex h-full min-h-0">
       <div className="flex w-72 shrink-0 flex-col border-r p-4">
         {warnings.length > 0 && (
           <Alert className="mb-2">
