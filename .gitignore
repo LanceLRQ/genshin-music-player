@@ -35,5 +35,6 @@ docs/_internal/
 .claude/
 .codegraph/
 .cursor/
+.zcodeignore
 CLAUDE.local.md
 AGENTS.md

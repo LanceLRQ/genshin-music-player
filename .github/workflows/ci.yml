@@ -1,9 +1,12 @@
 name: CI
 
+# 暂停自动触发：当前阶段在本机跑 pnpm lint / typecheck / test 验收，
+# 需要时在 Actions 页面手动运行。恢复自动跑就把下面的 push / pull_request 解注释。
 on:
-  push:
-    branches: [main, dev]
-  pull_request:
+  workflow_dispatch:
+  # push:
+  #   branches: [main, dev]
+  # pull_request:
 
 jobs:
   frontend:
