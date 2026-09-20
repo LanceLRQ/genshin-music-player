@@ -260,6 +260,18 @@ describe('PlayPage', () => {
     expect(screen.getByText('1.00×')).toBeInTheDocument();
   });
 
+  it('演奏中双击速度数值不生效，恢复自动推荐也禁用（设计 01 第 4.9 节锁定口径）', async () => {
+    useScoreStore.getState().setScore(score);
+    useAdaptStore.getState().resetToRecommended(score, lyre);
+    useAdaptStore.setState({ manual: true });
+    useTransportStore.setState({ playerState: { kind: 'playing' }, execution, speed: 1.5 });
+    const user = userEvent.setup();
+    render(<PlayPage />);
+    await user.dblClick(await screen.findByText('1.50×'));
+    expect(useTransportStore.getState().speed).toBe(1.5);
+    expect(screen.getByRole('button', { name: '恢复自动推荐' })).toBeDisabled();
+  });
+
   it('挂载后 500ms 内只请求一次执行时间线，防抖不随重渲染空转', async () => {
     vi.useFakeTimers();
     try {

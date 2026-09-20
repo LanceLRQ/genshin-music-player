@@ -351,6 +351,7 @@ export function PlayPage() {
                           variant="ghost"
                           size="sm"
                           className="h-7 gap-1 px-2 text-xs"
+                          disabled={locked}
                           onClick={() => useAdaptStore.getState().resetToRecommended(score, profile, sourceInstrumentId ?? undefined)}
                         >
                           <RotateCcw className="size-3.5" />
@@ -387,7 +388,10 @@ export function PlayPage() {
                         <span
                           className="w-12 cursor-default text-right text-sm tabular-nums"
                           title="双击恢复 1.00×"
-                          onDoubleClick={() => useTransportStore.getState().setSpeed(1)}
+                          onDoubleClick={() => {
+                            // 双击文案与滑块是同一参数的两个入口，锁定口径一致（设计 01 第 4.9 节）
+                            if (!locked) useTransportStore.getState().setSpeed(1);
+                          }}
                         >
                           {formatSpeed(speed)}
                         </span>
