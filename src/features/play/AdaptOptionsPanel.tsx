@@ -276,7 +276,7 @@ export function AdaptOptionsPanel({ profile, options, locked, onChange }: AdaptO
             />
           ))}
           <p className="text-xs text-muted-foreground">
-            鼓轨按乐器鼓映射表转换；MIDI 的鼓音符号和默认映射对不上时，给音色直接指定一个音符，指定优先于映射表。
+            鼓轨按乐器鼓映射表转换；MIDI 的鼓音符号和默认映射对不上、或鼓谱写在了普通音轨上时，给音色直接指定一个音符（如 bass → C2），指定优先于映射表和分界音高。
           </p>
         </>
       )}

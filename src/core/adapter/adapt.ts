@@ -100,7 +100,7 @@ function collectPercussion(
   for (const track of tracks) {
     for (const note of track.notes) {
       report.total += 1;
-      const voice = resolveVoice(note, { isDrum: track.isDrum, drumNotes, splitPitch });
+      const voice = resolveVoice(note, { isDrum: track.isDrum, drumNotes, splitPitch, voiceNotePitches: options.drumVoiceNotes });
       const code = voice === undefined ? undefined : voiceKeys.get(voice);
       if (code === undefined) {
         report.dropped.unmappedDrum += 1;

@@ -128,6 +128,21 @@ export interface VoiceContext {
   isDrum: boolean;
   drumNotes: Readonly<Record<string, string>>;
   splitPitch: number;
+  /** 按音色直接指定的音符（音色 → 音高）：对非鼓轨也生效——不少音源把鼓写在普通通道上，
+   *  这类轨道不走鼓映射表，只有用户的显式指定能纠正它 */
+  voiceNotePitches?: Readonly<Record<string, number>>;
+}
+
+/** 音高 → 音色的反查；同一音高只指定给一个音色（界面侧保证），命中返回音色名 */
+function findVoiceForPitch(
+  voiceNotePitches: Readonly<Record<string, number>> | undefined,
+  pitch: number,
+): string | undefined {
+  if (voiceNotePitches === undefined) return undefined;
+  for (const [voice, note] of Object.entries(voiceNotePitches)) {
+    if (note === pitch) return voice;
+  }
+  return undefined;
 }
 
 export function buildVoiceKeyMap(profile: InstrumentProfile): Map<string, string> {
@@ -144,6 +159,10 @@ export function resolveVoice(note: Note, context: VoiceContext): string | undefi
   if (note.voice !== undefined) return note.voice;
   if (note.pitch === undefined) return undefined;
   if (context.isDrum) return context.drumNotes[String(note.pitch)];
+  // 非鼓轨：用户显式指定的音符优先（合并进 drumNotes 的指定对鼓轨已在上面生效），
+  // 其余仍按分界音高映射为咚/咔
+  const override = findVoiceForPitch(context.voiceNotePitches, note.pitch);
+  if (override !== undefined) return override;
   return note.pitch < context.splitPitch ? 'don' : 'ka';
 }
 

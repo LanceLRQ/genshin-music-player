@@ -18,6 +18,17 @@ describe('resolveVoice', () => {
     expect(resolveVoice(note({ pitch: 99 }), drumContext)).toBeUndefined();
   });
 
+  it('非鼓轨上用户指定的音符优先于分界音高（纠正写在普通通道的鼓谱）', () => {
+    const context = { ...drumContext, isDrum: false, voiceNotePitches: { bass: 36, snare: 38 } };
+    expect(resolveVoice(note({ pitch: 36 }), context)).toBe('bass');
+    expect(resolveVoice(note({ pitch: 38 }), context)).toBe('snare');
+    // 未指定的音高仍按分界音高
+    expect(resolveVoice(note({ pitch: 59 }), context)).toBe('don');
+    expect(resolveVoice(note({ pitch: 60 }), context)).toBe('ka');
+    // 鼓轨不受影响：仍走鼓映射表
+    expect(resolveVoice(note({ pitch: 36 }), { ...drumContext, voiceNotePitches: { bass: 36 } })).toBe('don');
+  });
+
   it('非鼓轨按分界音高：低于分界为咚，其余为咔', () => {
     expect(resolveVoice(note({ pitch: 59 }), melodyContext)).toBe('don');
     expect(resolveVoice(note({ pitch: 60 }), melodyContext)).toBe('ka');
