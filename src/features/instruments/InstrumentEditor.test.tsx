@@ -175,7 +175,12 @@ describe('InstrumentEditor', () => {
   }, 15000);
 
   it('分界音高：关闭自动后可输入音名', async () => {
-    const { user } = renderEditor(drumProfile);
+    // 同上：全量 GM 映射会让编辑器渲染 47 行下拉，CI 慢机器上超时
+    const small: InstrumentProfile = {
+      ...structuredClone(drumProfile),
+      percussionMap: { drumNotes: { '36': 'don', '38': 'ka' }, splitPitch: 'auto' },
+    };
+    const { user } = renderEditor(small);
     expect(screen.queryByLabelText('分界音高')).not.toBeInTheDocument();
     await user.click(screen.getByRole('switch', { name: '自动（中位数）' }));
     const split = screen.getByLabelText('分界音高');
