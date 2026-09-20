@@ -76,3 +76,9 @@ cargo run -p gm-verify --release -- pattern scale --instrument windsong-lyre --h
 ```bash
 cargo run -p gm-verify --release -- pattern chord --instrument <id>
 ```
+
+## 已知平台坑：WKWebView 冻结动画时间轴
+
+macOS 的 WKWebView（本应用的运行环境，浏览器内嵌面板同理）在窗口遮挡 / 挂起渲染时会冻结 CSS 动画时间轴——`document.timeline.currentTime` 停在 0 不再前进，但 JS 定时器照常运行。Radix 浮层（下拉、对话框、菜单）关闭依赖退出动画的 `animationend` 事件，时间轴冻结时事件永远不会触发：浮层内容挂着不卸载，`body` 上残留 `pointer-events: none`，表现为「弹层关掉之后整个页面点不动、下拉再也拉不开」。
+
+`src/lib/overlayGuard.ts` 是这个问题的兜底：`body` 被禁用且没有任何 open 状态浮层时，给 Portal 里 closed 状态的浮层根补发 `animationend`，让 Radix Presence 立即完成卸载。它在 `main.tsx` 安装（visibilitychange / focus / 1s 轮询）。调试这类「页面僵死」问题时，先看 `document.body.style.pointerEvents` 是否为 `none`、`document.timeline.currentTime` 是否停走。
