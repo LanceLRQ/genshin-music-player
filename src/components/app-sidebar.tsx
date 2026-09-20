@@ -58,8 +58,8 @@ function BackendStatus() {
   }
   return (
     <div className="flex items-center gap-2">
-      <StatusDot className={env.backend === 'windows' ? STATUS_DOT_CLASS.green : STATUS_DOT_CLASS.gray} />
-      <span>{env.backend === 'windows' ? 'Windows' : '模拟模式'}</span>
+      <StatusDot className={env.backend === 'mock' ? STATUS_DOT_CLASS.gray : STATUS_DOT_CLASS.green} />
+      <span>{env.backend === 'windows' ? 'Windows' : env.backend === 'macos' ? 'macOS' : '模拟模式'}</span>
       {env.platform === 'windows' && (
         <span className={cn('truncate', !env.elevated && 'font-medium text-destructive')}>
           管理员 {env.elevated ? '✓' : '✗'}

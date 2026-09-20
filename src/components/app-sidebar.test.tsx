@@ -64,6 +64,14 @@ describe('AppSidebar', () => {
     expect(screen.queryByText(/管理员/)).not.toBeInTheDocument();
   });
 
+  it('macOS 真实发键后端显示 macOS，不显示成模拟模式', () => {
+    useEnvStore.setState({ env: { ...windowsEnv, platform: 'macos', backend: 'macos', elevated: null }, status: 'ready' });
+    renderSidebar();
+    expect(screen.getByText('macOS')).toBeInTheDocument();
+    expect(screen.queryByText('模拟模式')).not.toBeInTheDocument();
+    expect(screen.queryByText(/管理员/)).not.toBeInTheDocument();
+  });
+
   it('连接后端前后分别显示正在连接和未连接', () => {
     useEnvStore.setState({ status: 'loading' });
     renderSidebar();

@@ -57,10 +57,11 @@ pnpm tauri dev
 4. **点击"演奏"**：进入倒计时，在倒计时结束前切换到游戏窗口并打开对应乐器的演奏界面；倒计时结束后软件开始自动发送按键。
 5. **随时可以按热键暂停或停止**（默认 `F9` 开始/暂停，`F10` 停止），或者切出游戏窗口让软件自动暂停。
 
-更完整的操作说明见下面的文档。
+各页面的完整功能、参数含义、常见问题的处理见[使用指南](docs/guides/user-guide.md)。
 
 ## 文档
 
+- [使用指南](docs/guides/user-guide.md)
 - [设计规格](docs/superpowers/specs/2026-09-17-genshin-musician-design.md)
 - [键盘谱语法](docs/formats/keyscore.md)
 - [简谱语法](docs/formats/jianpu.md)
