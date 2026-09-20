@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 
-export type PageId = 'play' | 'instruments' | 'settings';
+export type PageId = 'play' | 'instruments' | 'settings' | 'help';
 
 /** 离开当前页面前的确认；返回 false 表示取消跳转 */
 export type LeaveGuard = () => boolean | Promise<boolean>;

@@ -1,4 +1,4 @@
-import { type LucideIcon, Music, PanelLeft, Piano, Settings } from 'lucide-react';
+import { BookOpen, type LucideIcon, Music, PanelLeft, Piano, Settings } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   Sidebar,
@@ -22,6 +22,7 @@ const NAV_ITEMS: { page: PageId; label: string; icon: LucideIcon }[] = [
   { page: 'play', label: '演奏', icon: Music },
   { page: 'instruments', label: '乐器', icon: Piano },
   { page: 'settings', label: '设置', icon: Settings },
+  { page: 'help', label: '帮助', icon: BookOpen },
 ];
 
 function StatusDot({ className }: { className: string }) {

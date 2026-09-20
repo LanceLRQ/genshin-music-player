@@ -4,6 +4,7 @@ import { DisclaimerDialog } from '@/components/disclaimer-dialog';
 import { EnvBanners } from '@/components/env-banners';
 import { SidebarInset, SidebarProvider } from '@/components/ui/sidebar';
 import { Toaster } from '@/components/ui/sonner';
+import { HelpPage } from '@/features/help/HelpPage';
 import { InstrumentsPage } from '@/features/instruments/InstrumentsPage';
 import { PlayPage } from '@/features/play/PlayPage';
 import { SettingsPage } from '@/features/settings/SettingsPage';
@@ -23,6 +24,8 @@ function CurrentPage({ page }: { page: PageId }) {
       return <InstrumentsPage />;
     case 'settings':
       return <SettingsPage />;
+    case 'help':
+      return <HelpPage />;
   }
 }
 
