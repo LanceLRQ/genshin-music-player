@@ -189,14 +189,27 @@ function findVoiceForPitch(
   return undefined;
 }
 
-export function buildVoiceKeyMap(profile: InstrumentProfile): Map<string, string> {
-  const map = new Map<string, string>();
+/** 对称备用键归并：去掉 `-2` 后缀的音色视为同一声音（游戏内鼓的左右键对称，音相同） */
+export function baseVoice(voice: string): string {
+  return voice.replace(/-2$/, '');
+}
+
+/**
+ * 声音 → 可用键位列表（按乐器行序）。同一声音的对称键（如 bass 与 bass-2）
+ * 归并为一组，连续击打时轮流使用，把同键连打间隔翻倍。
+ */
+export function buildVoiceKeyGroups(profile: InstrumentProfile): Map<string, string[]> {
+  const groups = new Map<string, string[]>();
   for (const row of profile.rows) {
     for (const key of row.keys) {
-      if (key.voice !== undefined) map.set(key.voice, key.code);
+      if (key.voice === undefined) continue;
+      const group = baseVoice(key.voice);
+      const codes = groups.get(group) ?? [];
+      codes.push(key.code);
+      groups.set(group, codes);
     }
   }
-  return map;
+  return groups;
 }
 
 export function resolveVoice(note: Note, context: VoiceContext): string | undefined {

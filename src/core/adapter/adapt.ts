@@ -1,7 +1,7 @@
 import type { InstrumentProfile } from '../model/instrument';
 import type { Score, Track } from '../model/score';
 import type { AdaptOptions, AdaptReport, KeyTimeline, Press } from '../model/timeline';
-import { DEFAULT_DRUM_NOTES, applyDrumVoiceNotes, buildVoiceKeyMap, median, resolveVoice } from './percussionMap';
+import { DEFAULT_DRUM_NOTES, applyDrumVoiceNotes, baseVoice, buildVoiceKeyGroups, median, resolveVoice } from './percussionMap';
 import { buildPitchKeyMap, resolvePitch } from './pitchMap';
 
 export interface AdaptResult {
@@ -93,20 +93,29 @@ function collectPercussion(
   options: AdaptOptions,
   report: AdaptReport,
 ): Candidate[] {
-  const voiceKeys = buildVoiceKeyMap(profile);
+  const voiceGroups = buildVoiceKeyGroups(profile);
   const drumNotes = applyDrumVoiceNotes(profile.percussionMap?.drumNotes ?? DEFAULT_DRUM_NOTES, options.drumVoiceNotes);
   const splitPitch = options.percussionSplitPitch ?? resolveSplitPitch(tracks, profile);
+  /** 每个声音已击打的次数：对称键组内轮流（第 n 次用第 n mod 组长 的键），左右交替 */
+  const strikes = new Map<string, number>();
   const candidates: Candidate[] = [];
   for (const track of tracks) {
     for (const note of track.notes) {
       report.total += 1;
       const voice = resolveVoice(note, { isDrum: track.isDrum, drumNotes, splitPitch, voiceNotePitches: options.drumVoiceNotes });
-      const code = voice === undefined ? undefined : voiceKeys.get(voice);
-      if (code === undefined) {
+      if (voice === undefined) {
         report.dropped.unmappedDrum += 1;
         continue;
       }
-      candidates.push({ startMs: note.startMs, code, order: note.pitch ?? 0, durationMs: note.durationMs, folded: false });
+      const group = baseVoice(voice);
+      const codes = voiceGroups.get(group);
+      if (codes === undefined || codes.length === 0) {
+        report.dropped.unmappedDrum += 1;
+        continue;
+      }
+      const count = strikes.get(group) ?? 0;
+      strikes.set(group, count + 1);
+      candidates.push({ startMs: note.startMs, code: codes[count % codes.length], order: note.pitch ?? 0, durationMs: note.durationMs, folded: false });
     }
   }
   return candidates;

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { BUILTIN_INSTRUMENTS } from '../instruments/registry';
 import type { Note } from '../model/score';
-import { DEFAULT_DRUM_NOTES, applyDrumVoiceNotes, buildVoiceKeyMap, drumNoteLabel, median, resolveVoice } from './percussionMap';
+import { DEFAULT_DRUM_NOTES, applyDrumVoiceNotes, baseVoice, buildVoiceKeyGroups, drumNoteLabel, median, resolveVoice } from './percussionMap';
 
 const note = (fields: Partial<Note>): Note => ({ startMs: 0, durationMs: 100, velocity: 1, ...fields });
 const drumContext = { isDrum: true, drumNotes: DEFAULT_DRUM_NOTES, splitPitch: 60 };
@@ -39,13 +39,21 @@ describe('resolveVoice', () => {
   });
 });
 
-describe('buildVoiceKeyMap', () => {
-  it('返回音色到键码的映射', () => {
+describe('buildVoiceKeyGroups 与 baseVoice', () => {
+  it('按声音归并键位：对称备用键（-2 后缀）进同一组，组内按行序', () => {
+    const juju = BUILTIN_INSTRUMENTS.find((p) => p.id === 'juju-drum')!;
+    expect(buildVoiceKeyGroups(juju).get('bass')).toEqual(['KeyQ', 'KeyA']);
+    expect(buildVoiceKeyGroups(juju).get('ride')).toEqual(['KeyO', 'KeyL']);
+  });
+
+  it('没有对称键的乐器每组只有一个键', () => {
     const drum = BUILTIN_INSTRUMENTS.find((p) => p.id === 'festive-drum')!;
-    expect([...buildVoiceKeyMap(drum)]).toEqual([
-      ['don', 'KeyS'],
-      ['ka', 'KeyA'],
-    ]);
+    expect(buildVoiceKeyGroups(drum).get('don')).toEqual(['KeyS']);
+  });
+
+  it('baseVoice 去掉一次 -2 后缀，无后缀原样返回', () => {
+    expect(baseVoice('bass-2')).toBe('bass');
+    expect(baseVoice('ka')).toBe('ka');
   });
 });
 
