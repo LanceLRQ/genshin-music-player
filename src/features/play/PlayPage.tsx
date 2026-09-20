@@ -325,6 +325,7 @@ export function PlayPage() {
                 locked={locked}
                 onSetChecked={(tracks) => useAdaptStore.getState().setOptions({ ...options, tracks })}
                 onSolo={(mode, trackId) => void handleSolo(mode, trackId)}
+                onToggleDrum={(trackId, isDrum) => useScoreStore.getState().setTrackDrum(trackId, isDrum)}
               />
             </div>
             <div className="border-t p-4 pt-3">

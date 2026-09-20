@@ -4,12 +4,12 @@ import { Button } from '@/components/ui/button';
 import { ButtonGroup } from '@/components/ui/button-group';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Input } from '@/components/ui/input';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Select, SelectContent, SelectItem, SelectTrigger } from '@/components/ui/select';
 import { Slider } from '@/components/ui/slider';
 import { Switch } from '@/components/ui/switch';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { drumNoteLabel } from '@/core/adapter/percussionMap';
-import { noteNameToMidi } from '@/core/music/pitch';
+import { midiToNoteName, noteNameToMidi } from '@/core/music/pitch';
 import { voiceLabel } from '@/core/model/instrument';
 import type { InstrumentProfile } from '@/core/model/instrument';
 import type { AdaptOptions } from '@/core/model/timeline';
@@ -157,18 +157,19 @@ interface DrumVoiceNoteRowProps {
   onPick: (pitch: number | undefined) => void;
 }
 
-/** 敲击类的「音色 → 指定音符」行：默认自动（按鼓映射表），选定后该音符优先映射到这个音色 */
+/** 「音色 → 指定音符」单项：音色名与下拉横向紧凑排列；basis 保证窄容器下每行至少两项。
+ *  收起时只显示音名或「自动」，完整的 GM 打击乐名称在展开的选项列表里看 */
 function DrumVoiceNoteRow({ label, pitch, taken, locked, onPick }: DrumVoiceNoteRowProps) {
   return (
-    <div className="flex items-center gap-3">
-      <span className="w-14 shrink-0 text-sm">{label}</span>
+    <div className="flex min-w-0 flex-1 basis-32 items-center gap-1.5">
+      <span className="shrink-0 text-sm">{label}</span>
       <Select
         value={pitch === undefined ? 'auto' : String(pitch)}
         onValueChange={(value) => onPick(value === 'auto' ? undefined : Number(value))}
         disabled={locked}
       >
-        <SelectTrigger className="w-44" aria-label={`指定${label}的音符`}>
-          <SelectValue />
+        <SelectTrigger className="h-8 min-w-0 flex-1" aria-label={`指定${label}的音符`}>
+          {pitch === undefined ? '自动' : midiToNoteName(pitch)}
         </SelectTrigger>
         <SelectContent>
           <SelectItem value="auto">自动（按鼓映射表）</SelectItem>
@@ -261,20 +262,22 @@ export function AdaptOptionsPanel({ profile, options, locked, onChange }: AdaptO
             onToggle={(auto) => onChange({ ...options, percussionSplitPitch: auto ? undefined : MANUAL_SPLIT_PITCH })}
             onCommit={(percussionSplitPitch) => onChange({ ...options, percussionSplitPitch })}
           />
-          {drumVoices.map((voice) => (
-            <DrumVoiceNoteRow
-              key={voice}
-              label={voiceLabel(voice)}
-              pitch={options.drumVoiceNotes?.[voice]}
-              taken={new Set(
-                Object.entries(options.drumVoiceNotes ?? {})
-                  .filter(([other]) => other !== voice)
-                  .map(([, pitch]) => pitch),
-              )}
-              locked={locked}
-              onPick={(pitch) => setDrumVoiceNote(voice, pitch)}
-            />
-          ))}
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+            {drumVoices.map((voice) => (
+              <DrumVoiceNoteRow
+                key={voice}
+                label={voiceLabel(voice)}
+                pitch={options.drumVoiceNotes?.[voice]}
+                taken={new Set(
+                  Object.entries(options.drumVoiceNotes ?? {})
+                    .filter(([other]) => other !== voice)
+                    .map(([, pitch]) => pitch),
+                )}
+                locked={locked}
+                onPick={(pitch) => setDrumVoiceNote(voice, pitch)}
+              />
+            ))}
+          </div>
           <p className="text-xs text-muted-foreground">
             鼓轨按乐器鼓映射表转换；MIDI 的鼓音符号和默认映射对不上、或鼓谱写在了普通音轨上时，给音色直接指定一个音符（如 bass → C2），指定优先于映射表和分界音高。
           </p>

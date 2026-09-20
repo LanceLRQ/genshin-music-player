@@ -41,8 +41,11 @@ describe('adaptStore', () => {
     expect(state.manual).toBe(false);
   });
 
-  it('敲击类乐器默认选第一条有音符的音轨', () => {
+  it('敲击类乐器默认优先选鼓轨，没有鼓轨时选第一条有音符的轨', () => {
     useAdaptStore.getState().resetToRecommended(score, drum);
+    expect(useAdaptStore.getState().options?.tracks).toEqual(['t1']);
+    const noDrum: Score = { ...score, tracks: [score.tracks[0]] };
+    useAdaptStore.getState().resetToRecommended(noDrum, drum);
     expect(useAdaptStore.getState().options?.tracks).toEqual(['t0']);
   });
 });

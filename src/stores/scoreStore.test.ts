@@ -31,3 +31,28 @@ describe('scoreStore', () => {
     expect(useScoreStore.getState().score).toBeNull();
   });
 });
+
+describe('setTrackDrum', () => {
+  it('切换指定轨道的 isDrum，不影响其他轨道', () => {
+    useScoreStore.getState().setScore({
+      ...score,
+      tracks: [
+        score.tracks[0],
+        { id: 't1', name: '音轨 2', isDrum: false, notes: [{ startMs: 0, durationMs: 100, pitch: 36, velocity: 0.8 }] },
+      ],
+    });
+    useScoreStore.getState().setTrackDrum('t1', true);
+    const tracks = useScoreStore.getState().score!.tracks;
+    expect(tracks.map((t) => t.isDrum)).toEqual([false, true]);
+    // 其他字段原样
+    expect(tracks[1].notes[0].pitch).toBe(36);
+    useScoreStore.getState().setTrackDrum('t1', false);
+    expect(useScoreStore.getState().score!.tracks[1].isDrum).toBe(false);
+  });
+
+  it('没有乐谱时是空操作', () => {
+    useScoreStore.getState().clear();
+    useScoreStore.getState().setTrackDrum('t0', true);
+    expect(useScoreStore.getState().score).toBeNull();
+  });
+});

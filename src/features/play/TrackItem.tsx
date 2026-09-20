@@ -22,10 +22,12 @@ interface TrackItemProps {
   locked: boolean;
   onCheckedChange: (checked: boolean) => void;
   onSolo: (mode: SoloMode) => void;
+  /** 手动切换轨道类型（纠正自动识别错误的鼓轨） */
+  onToggleDrum: (isDrum: boolean) => void;
 }
 
 /** 单条音轨（设计 01 第 4.4 节） */
-export function TrackItem({ track, checked, rate, drumDisabled, locked, onCheckedChange, onSolo }: TrackItemProps) {
+export function TrackItem({ track, checked, rate, drumDisabled, locked, onCheckedChange, onSolo, onToggleDrum }: TrackItemProps) {
   const stats = trackStats(track);
   const soloDisabled = drumDisabled || !checked || locked;
   const subParts = [
@@ -63,6 +65,20 @@ export function TrackItem({ track, checked, rate, drumDisabled, locked, onChecke
             <TooltipContent>{track.name}</TooltipContent>
           </Tooltip>
           {track.isDrum && <Badge variant="secondary">鼓</Badge>}
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                type="button"
+                aria-label={track.isDrum ? '切换为普通音轨' : '切换为鼓轨'}
+                disabled={locked}
+                onClick={() => onToggleDrum(!track.isDrum)}
+                className="rounded border border-dashed px-1 text-[10px] leading-4 text-muted-foreground transition-colors hover:bg-accent disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {track.isDrum ? '当旋律' : '当鼓'}
+              </button>
+            </TooltipTrigger>
+            <TooltipContent>MIDI 按通道 10 识别鼓轨；识别不对时手动切换轨道类型。</TooltipContent>
+          </Tooltip>
         </ItemTitle>
         <ItemDescription className="truncate">{subParts.join(' · ')}</ItemDescription>
       </ItemContent>

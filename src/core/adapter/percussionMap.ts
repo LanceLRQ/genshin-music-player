@@ -70,6 +70,50 @@ export function applyDrumVoiceNotes(
   return merged;
 }
 
+/**
+ * 自动推荐「音色 → 指定音符」：按谱中音高的出现数量降序逐个分配——
+ * 乐器鼓映射表（含 GM 预设）命中的音高沿用其音色，表外的音高按音高升序
+ * 分给还没被占用的音色（行序）。音高多于音色时数量少的不再分配。
+ */
+export function recommendDrumVoiceNotes(
+  notes: readonly { pitch?: number }[],
+  profile: InstrumentProfile,
+): Record<string, number> | undefined {
+  if (profile.kind !== 'percussion') return undefined;
+  const voices = [
+    ...new Set(profile.rows.flatMap((row) => row.keys.map((key) => key.voice).filter((voice) => voice !== undefined))),
+  ];
+  if (voices.length === 0) return undefined;
+  const table = profile.percussionMap?.drumNotes ?? DEFAULT_DRUM_NOTES;
+
+  const counts = new Map<number, number>();
+  for (const note of notes) {
+    if (note.pitch === undefined) continue;
+    counts.set(note.pitch, (counts.get(note.pitch) ?? 0) + 1);
+  }
+  if (counts.size === 0) return undefined;
+  const byCount = [...counts.entries()].sort((a, b) => b[1] - a[1] || a[0] - b[0]).map(([pitch]) => pitch);
+
+  const result: Record<string, number> = {};
+  const taken = new Set<string>();
+  const unmapped: number[] = [];
+  for (const pitch of byCount) {
+    const voice = table[String(pitch)];
+    if (voice !== undefined && !taken.has(voice) && voices.includes(voice)) {
+      result[voice] = pitch;
+      taken.add(voice);
+    } else {
+      unmapped.push(pitch);
+    }
+  }
+  unmapped.sort((a, b) => a - b);
+  const rest = voices.filter((voice) => !taken.has(voice));
+  for (let index = 0; index < Math.min(unmapped.length, rest.length); index += 1) {
+    result[rest[index]] = unmapped[index];
+  }
+  return Object.keys(result).length > 0 ? result : undefined;
+}
+
 /** GM 打击乐（35–81）音符号 → 音色的默认映射：底鼓为咚，其余一律为咔，保证 GM 鼓轨不因音符号缺失而丢音 */
 export const GM_DRUM_NOTES: Readonly<Record<string, string>> = {
   '35': 'don',

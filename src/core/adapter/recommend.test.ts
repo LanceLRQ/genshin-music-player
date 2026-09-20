@@ -4,6 +4,7 @@ import { InstrumentProfileSchema } from '../model/instrument';
 import type { Note, Score, Track } from '../model/score';
 import { DEFAULT_ADAPT_OPTIONS } from '../model/timeline';
 import { defaultTrackIds, recommendOptions, recommendShift, trackHitRates } from './recommend';
+import { recommendDrumVoiceNotes } from './percussionMap';
 
 const builtin = (id: string) => BUILTIN_INSTRUMENTS.find((p) => p.id === id)!;
 const lyre = builtin('windsong-lyre');
@@ -118,5 +119,43 @@ describe('trackHitRates', () => {
     );
     const options = { ...DEFAULT_ADAPT_OPTIONS, tracks: ['t0', 't1', 't2'] };
     expect(trackHitRates(score, lyre, options)).toEqual({ t0: 1, t1: 0, t2: 0 });
+  });
+});
+
+describe('敲击类推荐：鼓轨优先与音色指定预填', () => {
+  const juju = builtin('juju-drum');
+
+  it('敲击类默认优先勾选鼓轨，没有鼓轨时退回第一条有音符的轨', () => {
+    const mixed = scoreOf(track('t0', [note(0, 60)]), track('t1', [note(0, 36)], true));
+    expect(defaultTrackIds(mixed, juju)).toEqual(['t1']);
+    expect(defaultTrackIds(mixed, drum)).toEqual(['t1']);
+    const melodyOnly = scoreOf(track('t0', [note(0, 60)]));
+    expect(defaultTrackIds(melodyOnly, juju)).toEqual(['t0']);
+  });
+
+  it('recommendDrumVoiceNotes：GM 表命中的音高沿用音色，表外音高按音高序分给剩余音色', () => {
+    // 36→bass-2、38→snare-2、42→ride-2 都在聚聚鼓 GM 表内；99 表外 → 剩余音色里排最前的 bass
+    const notes = [...Array.from({ length: 10 }, () => note(0, 36)), ...Array.from({ length: 6 }, () => note(0, 38)), ...Array.from({ length: 4 }, () => note(0, 99))];
+    expect(recommendDrumVoiceNotes(notes, juju)).toEqual({ bass: 99, 'bass-2': 36, 'snare-2': 38 });
+  });
+
+  it('音高多于音色时只保留数量最多的前 N 个（聚聚鼓 8 个音色）', () => {
+    // 10 个不同音高，数量从多到少；只有前 8 个能分到音色，最少的两个被舍弃
+    const pitches = [36, 38, 42, 41, 43, 48, 49, 50, 51, 57];
+    const many = pitches.flatMap((pitch, weight) => Array.from({ length: 10 - weight }, () => note(0, pitch)));
+    const result = recommendDrumVoiceNotes(many, juju)!;
+    expect(Object.keys(result)).toHaveLength(8);
+    expect(Object.values(result)).toContain(36);
+    // 57 在 GM 表里独立映射 snare（未被占用）照样命中；撞车落到 unmapped 的 50/51 没有剩余音色才被舍弃
+    expect(Object.values(result)).toContain(57);
+    expect(Object.values(result)).not.toContain(50);
+    expect(Object.values(result)).not.toContain(51);
+  });
+
+  it('recommendOptions 为敲击类预填 drumVoiceNotes，音高类不填', () => {
+    const drumScore = scoreOf(track('t0', Array.from({ length: 8 }, () => note(0, 36)), true));
+    const pitchedScore = scoreOf(track('t0', [note(0, 60)]));
+    expect(recommendOptions(drumScore, juju).drumVoiceNotes).toBeDefined();
+    expect(recommendOptions(pitchedScore, lyre).drumVoiceNotes).toBeUndefined();
   });
 });

@@ -37,6 +37,7 @@ function renderList(overrides: Partial<Parameters<typeof TrackList>[0]> = {}) {
     locked: false,
     onSetChecked: vi.fn(),
     onSolo: vi.fn(),
+    onToggleDrum: vi.fn(),
     ...overrides,
   };
   render(
@@ -103,5 +104,20 @@ describe('TrackList', () => {
     renderList();
     const item = screen.getByText('无音轨').closest<HTMLElement>('[data-slot=item]')!;
     expect(within(item).getByText('—')).toBeInTheDocument();
+  });
+});
+
+describe('TrackList 轨道类型切换', () => {
+  it('鼓轨显示「当旋律」按钮，点击回调切换；旋律轨显示「当鼓」', async () => {
+    const props = renderList();
+    const user = userEvent.setup();
+    const drumButton = screen.getByRole('button', { name: '切换为普通音轨' });
+    expect(within(drumButton).getByText('当旋律')).toBeInTheDocument();
+    const melodyButton = screen.getAllByRole('button', { name: '切换为鼓轨' })[0];
+    expect(melodyButton.textContent).toBe('当鼓');
+    await user.click(drumButton);
+    expect(props.onToggleDrum).toHaveBeenCalledWith('t1', false);
+    await user.click(melodyButton);
+    expect(props.onToggleDrum).toHaveBeenCalledWith('t0', true);
   });
 });

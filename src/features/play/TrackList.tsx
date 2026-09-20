@@ -12,10 +12,12 @@ interface TrackListProps {
   locked: boolean;
   onSetChecked: (ids: string[]) => void;
   onSolo: (mode: SoloMode, trackId: string) => void;
+  /** 手动切换轨道类型（纠正自动识别错误的鼓轨） */
+  onToggleDrum: (trackId: string, isDrum: boolean) => void;
 }
 
 /** 音轨列表：勾选的音轨合并适配（设计 01 第 4.4 节）；滚动交给左栏中段的 overflow 容器，内部不再自建滚动 */
-export function TrackList({ tracks, checkedIds, rates, pitched, locked, onSetChecked, onSolo }: TrackListProps) {
+export function TrackList({ tracks, checkedIds, rates, pitched, locked, onSetChecked, onSolo, onToggleDrum }: TrackListProps) {
   const toggle = (trackId: string) => {
     onSetChecked(
       checkedIds.includes(trackId) ? checkedIds.filter((id) => id !== trackId) : [...checkedIds, trackId],
@@ -32,6 +34,7 @@ export function TrackList({ tracks, checkedIds, rates, pitched, locked, onSetChe
       locked={locked}
       onCheckedChange={() => toggle(track.id)}
       onSolo={(mode) => onSolo(mode, track.id)}
+      onToggleDrum={(isDrum) => onToggleDrum(track.id, isDrum)}
     />
   ));
   return (

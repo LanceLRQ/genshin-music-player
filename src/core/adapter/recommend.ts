@@ -2,7 +2,7 @@ import type { InstrumentProfile } from '../model/instrument';
 import type { Score } from '../model/score';
 import { type AdaptOptions, DEFAULT_ADAPT_OPTIONS } from '../model/timeline';
 import { adapt, hitRate } from './adapt';
-import { median } from './percussionMap';
+import { median, recommendDrumVoiceNotes } from './percussionMap';
 import { type PitchKeyMap, buildPitchKeyMap, resolvePitch } from './pitchMap';
 
 export interface ShiftRecommendation {
@@ -22,10 +22,14 @@ interface PitchedNote {
   pitch: number;
 }
 
-/** 默认只勾选一条音轨：第一条有音符的合规轨（音高类乐器排除鼓轨）；没有合规轨时为空 */
+/** 默认只勾选一条音轨：敲击类乐器优先取第一条有音符的鼓轨（没有鼓轨再退回第一条有音符的轨）；
+ *  音高类乐器取第一条有音符的非鼓轨；没有合规轨时为空 */
 export function defaultTrackIds(score: Score, profile: InstrumentProfile): string[] {
-  const eligible = score.tracks.filter((track) => profile.kind === 'percussion' || !track.isDrum);
-  const first = eligible.find((track) => track.notes.length > 0);
+  const eligible = profile.kind === 'percussion'
+    ? score.tracks
+    : score.tracks.filter((track) => !track.isDrum);
+  const drum = profile.kind === 'percussion' ? eligible.find((track) => track.isDrum && track.notes.length > 0) : undefined;
+  const first = drum ?? eligible.find((track) => track.notes.length > 0);
   return first ? [first.id] : [];
 }
 
@@ -69,7 +73,7 @@ export function recommendShift(
   return best;
 }
 
-/** 自动推荐的完整适配参数；来源乐器与目标乐器相同时不移调 */
+/** 自动推荐的完整适配参数；来源乐器与目标乐器相同时不移调；敲击类预填按音色的音符指定 */
 export function recommendOptions(
   score: Score,
   profile: InstrumentProfile,
@@ -77,7 +81,10 @@ export function recommendOptions(
 ): AdaptOptions {
   const tracks = defaultTrackIds(score, profile);
   const shift = sourceInstrumentId === profile.id ? NO_SHIFT : recommendShift(score, profile, tracks);
-  return { ...DEFAULT_ADAPT_OPTIONS, tracks, ...shift };
+  const drumVoiceNotes = profile.kind === 'percussion'
+    ? recommendDrumVoiceNotes(score.tracks.filter((track) => tracks.includes(track.id)).flatMap((track) => track.notes), profile)
+    : undefined;
+  return { ...DEFAULT_ADAPT_OPTIONS, tracks, ...shift, drumVoiceNotes };
 }
 
 /** 每条音轨单独适配时的命中率，算法见 hitRate */
