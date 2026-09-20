@@ -44,8 +44,6 @@ jobs:
           cache: pnpm
       - uses: dtolnay/rust-toolchain@stable
       - uses: swatinem/rust-cache@v2
-        with:
-          workspaces: src-tauri -> target
       - run: pnpm install --frozen-lockfile
 
       - name: 确定版本号（tag 去 v 前缀；手动运行沿用 tauri.conf 版本）
@@ -71,8 +69,8 @@ jobs:
         run: |
           $version = '${{ steps.version.outputs.version }}'
           New-Item -ItemType Directory -Force portable | Out-Null
-          # Tauri v2 会把主程序按 productName 重命名，两个名字都认；都没有就列出目录方便排查
-          $release = 'src-tauri/target/release'
+          # Cargo workspace 根在仓库根目录，构建产物在 target/；Tauri v2 会把主程序按 productName 重命名，两个名字都认
+          $release = 'target/release'
           $exe = Get-ChildItem $release -Filter '*.exe' |
             Where-Object { $_.Name -in @('Genshin Music Player.exe', 'genshin-music-player.exe') } |
             Select-Object -First 1
@@ -100,7 +98,7 @@ jobs:
         with:
           name: windows-${{ steps.version.outputs.version }}
           path: |
-            src-tauri/target/release/bundle/nsis/*.exe
+            target/release/bundle/nsis/*.exe
             portable/*.zip
           if-no-files-found: error
 
@@ -109,7 +107,7 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           files: |
-            src-tauri/target/release/bundle/nsis/*.exe
+            target/release/bundle/nsis/*.exe
             portable/*.zip
           fail_on_unmatched_files: true
           generate_release_notes: true
