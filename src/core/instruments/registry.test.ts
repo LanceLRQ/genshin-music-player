@@ -37,9 +37,9 @@ describe('内置乐器', () => {
     expect(builtin('floral-zither').rows).toEqual(builtin('windsong-lyre').rows);
   });
 
-  it('老旧的诗琴待实测，上排为 C 弗里几亚音阶', () => {
+  it('老旧的诗琴已验证（2026-09-19 游戏内实测），上排为 C 弗里几亚音阶', () => {
     const vintage = builtin('vintage-lyre');
-    expect(vintage.status).toBe('unverified');
+    expect(vintage.status).toBe('verified');
     expect(vintage.rows[0].keys.map((k) => k.pitch)).toEqual([72, 73, 75, 77, 79, 80, 82]);
   });
 

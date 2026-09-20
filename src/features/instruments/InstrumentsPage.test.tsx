@@ -73,7 +73,8 @@ describe('InstrumentsPage 列表与详情', () => {
     expect(screen.getByText('荒泷·盛世豪鼓')).toBeInTheDocument();
     // 三件敲击类：荒泷·盛世豪鼓、聚聚鼓、绮筵之鼓
     expect(screen.getAllByText('敲击')).toHaveLength(3);
-    expect(screen.getAllByText('待实测').length).toBeGreaterThanOrEqual(3);
+    // 12 件内置乐器均已于 2026-09-19 游戏内实测，列表不应再出现待实测徽章
+    expect(screen.queryByText('待实测')).toBeNull();
   });
 
   it('详情显示元信息、时值行与虚拟琴键预览，点击键帽试听', async () => {
@@ -104,6 +105,8 @@ describe('InstrumentsPage 列表与详情', () => {
     await renderPage();
     // 警告只影响读取失败的文件，合法的自定义乐器照常加载
     expect(screen.getByText('我的琴')).toBeInTheDocument();
+    // 待实测徽章由自定义乐器承载（内置乐器已全部实测）
+    expect(screen.getAllByText('待实测')).toHaveLength(1);
     await userEvent.setup().click(screen.getByRole('button', { name: '有 2 个自定义乐器文件无法读取' }));
     expect(screen.getByText('跳过无法解析的文件 bad.json')).toBeInTheDocument();
     expect(screen.getByText('跳过无法解析的文件 worse.json')).toBeInTheDocument();

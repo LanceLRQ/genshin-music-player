@@ -3,7 +3,7 @@
   "id": "harmony-clavier",
   "name": "谐律键琴",
   "kind": "pitched",
-  "status": "unverified",
+  "status": "verified",
   "rows": [
     {
       "label": "高音",
