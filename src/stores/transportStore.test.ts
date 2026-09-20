@@ -331,4 +331,12 @@ describe('transportStore（参数与音量）', () => {
     expect(vi.mocked(previewPlayer.setVolume)).toHaveBeenCalledWith(0.3);
     expect(useTransportStore.getState().volume).toBe(0.3);
   });
+
+  it('从未设置过音量时默认 0.7，不会把缺失键误读为静音', async () => {
+    // localStorage.getItem 对缺失键返回 null，Number(null) === 0 曾让全新环境天生音量 0
+    localStorage.removeItem(VOLUME_STORAGE_KEY);
+    vi.resetModules();
+    const { useTransportStore: freshStore } = await import('./transportStore');
+    expect(freshStore.getState().volume).toBe(0.7);
+  });
 });

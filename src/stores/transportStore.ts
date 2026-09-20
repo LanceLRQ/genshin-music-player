@@ -17,7 +17,10 @@ export interface SoloRun {
 
 function readVolume(): number {
   try {
-    const value = Number(localStorage.getItem(VOLUME_STORAGE_KEY));
+    // getItem 对缺失键返回 null，而 Number(null) === 0 会把"从未设置"误读成音量 0（试听天生静音）
+    const raw = localStorage.getItem(VOLUME_STORAGE_KEY);
+    if (raw === null) return 0.7;
+    const value = Number(raw);
     return Number.isFinite(value) && value >= 0 && value <= 1 ? value : 0.7;
   } catch {
     return 0.7;
