@@ -184,14 +184,14 @@ describe('adapt：敲击类乐器', () => {
     expect(codesOf(result)).toEqual([['KeyQ'], ['KeyA'], ['KeyQ'], ['KeyA']]);
   });
 
-  it('轮流按声音独立计数：bass 与 ride 交错时各自保持相位', () => {
+  it('轮流按声音独立计数：bass 与擦交错时各自保持相位', () => {
     const juju = builtin('juju-drum');
     const result = adapt(
       scoreOf(track('t0', [note(0, 36), note(50, 42), note(100, 36), note(150, 42)], true)),
       juju,
       options(),
     );
-    expect(codesOf(result)).toEqual([['KeyQ'], ['KeyO'], ['KeyA'], ['KeyL']]);
+    expect(codesOf(result)).toEqual([['KeyQ'], ['KeyI'], ['KeyA'], ['KeyK']]);
   });
 
   it('指定音符到变体音色时同样归并轮流（bass-2 与 bass 同组）', () => {
@@ -222,9 +222,9 @@ describe('adapt：敲击类乐器', () => {
     const result = adapt(
       scoreOf(track('t0', [note(0, 36), note(50, 38), note(100, 42)], false)),
       juju,
-      options({ drumVoiceNotes: { bass: 36, 'hi-hat': 38, triplet: 42 } }),
+      options({ drumVoiceNotes: { bass: 36, snare: 38, 'hi-hat': 42 } }),
     );
-    expect(codesOf(result)).toEqual([['KeyQ'], ['KeyI'], ['KeyO']]);
+    expect(codesOf(result)).toEqual([['KeyQ'], ['KeyW'], ['KeyI']]);
     expect(result.report.dropped.unmappedDrum).toBe(0);
   });
 

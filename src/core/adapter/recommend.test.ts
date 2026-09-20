@@ -134,9 +134,9 @@ describe('敲击类推荐：鼓轨优先与音色指定预填', () => {
   });
 
   it('recommendDrumVoiceNotes：GM 表命中的音高沿用声音，表外音高按音高序分给剩余声音', () => {
-    // 36→bass、38→hi-hat 都在聚聚鼓 GM 表内；99 表外 → 剩余声音里排最前的 snare
+    // 36→bass、38→snare 都在聚聚鼓 GM 表内；99 表外 → 剩余声音里排最前的 hi-hat
     const notes = [...Array.from({ length: 10 }, () => note(0, 36)), ...Array.from({ length: 6 }, () => note(0, 38)), ...Array.from({ length: 4 }, () => note(0, 99))];
-    expect(recommendDrumVoiceNotes(notes, juju)).toEqual({ bass: 36, 'hi-hat': 38, snare: 99 });
+    expect(recommendDrumVoiceNotes(notes, juju)).toEqual({ bass: 36, snare: 38, 'hi-hat': 99 });
   });
 
   it('映射表写到 -2 变体时也归并到基础音色（预填不落到孪生行）', () => {
@@ -147,11 +147,11 @@ describe('敲击类推荐：鼓轨优先与音色指定预填', () => {
   });
 
   it('音高多于声音组时只保留数量最多的前 N 个（聚聚鼓 4 个声音组）', () => {
-    // 10 个不同音高，数量从多到少；只有前 4 个能分到声音组，其余被舍弃
+    // 10 个不同音高，数量从多到少；表命中 bass/snare/hi-hat 后，triplet 由表内下一个音高 49（碎音镲）补上
     const pitches = [36, 38, 42, 41, 43, 48, 49, 50, 51, 57];
     const many = pitches.flatMap((pitch, weight) => Array.from({ length: 10 - weight }, () => note(0, pitch)));
     const result = recommendDrumVoiceNotes(many, juju)!;
-    expect(result).toEqual({ bass: 36, 'hi-hat': 38, triplet: 42, snare: 41 });
+    expect(result).toEqual({ bass: 36, snare: 38, 'hi-hat': 42, triplet: 49 });
   });
 
   it('recommendOptions 为敲击类预填 drumVoiceNotes，音高类不填', () => {
