@@ -216,6 +216,49 @@ describe('adapt：敲击类乐器', () => {
     expect(codesOf(result)).toEqual([['KeyQ'], ['KeyA'], ['KeyQ'], ['KeyA'], ['KeyQ'], ['KeyA'], ['KeyQ'], ['KeyA']]);
   });
 
+  it('同一声音在同一时刻的重音合并成一次击打，不占用两个对称键', () => {
+    const juju = builtin('juju-drum');
+    // 两条鼓轨在同一时刻各有一个底鼓（MIDI 叠层与多轨合并都会出现）：
+    // 轮流击打不能把它们拆成左右键同时按下，那在游戏里是一次双倍力度的击打
+    const result = adapt(
+      scoreOf(track('t0', [note(0, 36)], true), track('t1', [note(0, 36)], true)),
+      juju,
+      options({ tracks: ['t0', 't1'] }),
+    );
+    expect(codesOf(result)).toEqual([['KeyQ']]);
+    expect(result.report.merged).toBe(1);
+    expect(result.report.played).toBe(1);
+    expect(result.report.total).toBe(2);
+  });
+
+  it('被合并的重音不占用轮流计数，后续击打仍从另一侧继续', () => {
+    const juju = builtin('juju-drum');
+    // t=0 与 t=5 在 chordWindowMs(15) 内属同一次击打，合并后只消耗一个计数，
+    // 因此 t=200 的下一击应落在 KeyA 而不是跳回 KeyQ
+    const result = adapt(
+      scoreOf(track('t0', [note(0, 36), note(5, 36), note(200, 36)], true)),
+      juju,
+      options(),
+    );
+    expect(codesOf(result)).toEqual([['KeyQ'], ['KeyA']]);
+    expect(result.report.merged).toBe(1);
+  });
+
+  it('多轨合并时轮流按时间顺序推进，而非按轨道先后', () => {
+    const juju = builtin('juju-drum');
+    // 轨 t0 在 0/200/400、轨 t1 在 100/300：按时间序应严格左右交替，
+    // 若按「先走完 t0 再走 t1」分配，会出现 100/200 连着两次 KeyA
+    const result = adapt(
+      scoreOf(
+        track('t0', [note(0, 36), note(200, 36), note(400, 36)], true),
+        track('t1', [note(100, 36), note(300, 36)], true),
+      ),
+      juju,
+      options({ tracks: ['t0', 't1'] }),
+    );
+    expect(codesOf(result)).toEqual([['KeyQ'], ['KeyA'], ['KeyQ'], ['KeyA'], ['KeyQ']]);
+  });
+
   it('非鼓轨（如写在普通通道的鼓谱）上按音色指定的音符生效，不再全数丢弃', () => {
     const juju = builtin('juju-drum');
     // 模拟「不问天-鼓」：644 个音全在 36/38/42，但写在通道 1（isDrum = false）

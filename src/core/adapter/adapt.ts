@@ -96,9 +96,17 @@ function collectPercussion(
   const voiceGroups = buildVoiceKeyGroups(profile);
   const drumNotes = applyDrumVoiceNotes(profile.percussionMap?.drumNotes ?? DEFAULT_DRUM_NOTES, options.drumVoiceNotes);
   const splitPitch = options.percussionSplitPitch ?? resolveSplitPitch(tracks, profile);
-  /** 每个声音已击打的次数：对称键组内轮流（第 n 次用第 n mod 组长 的键），左右交替 */
-  const strikes = new Map<string, number>();
-  const candidates: Candidate[] = [];
+
+  // 先解析出每个音落在哪个声音上，再按时间排序：轮流击打必须沿时间轴推进，
+  // 否则多轨合并时会按「先走完一条轨再走下一条」分配键位，同一侧连着响两下
+  interface Hit {
+    startMs: number;
+    group: string;
+    codes: string[];
+    durationMs: number;
+    pitch: number;
+  }
+  const hits: Hit[] = [];
   for (const track of tracks) {
     for (const note of track.notes) {
       report.total += 1;
@@ -113,10 +121,35 @@ function collectPercussion(
         report.dropped.unmappedDrum += 1;
         continue;
       }
-      const count = strikes.get(group) ?? 0;
-      strikes.set(group, count + 1);
-      candidates.push({ startMs: note.startMs, code: codes[count % codes.length], order: note.pitch ?? 0, durationMs: note.durationMs, folded: false });
+      hits.push({ startMs: note.startMs, group, codes, durationMs: note.durationMs, pitch: note.pitch ?? 0 });
     }
+  }
+  hits.sort((a, b) => a.startMs - b.startMs);
+
+  /** 每个声音已击打的次数：对称键组内轮流（第 n 次用第 n mod 组长 的键），左右交替 */
+  const strikes = new Map<string, number>();
+  /** 每个声音上一次击打的时刻，用于合并同一次击打的重音 */
+  const lastHitAt = new Map<string, number>();
+  const candidates: Candidate[] = [];
+  for (const hit of hits) {
+    // 同一声音在和弦窗口内的重音（MIDI 力度叠层、多轨同拍）算同一次击打。必须在分配
+    // 轮流键位之前合并：否则重音会占掉一个轮流位，把后续击打的左右相位错开；而且分到
+    // 左右两个键后不再撞码，buildPresses 的同键去重也拦不住，变成双键齐击
+    const last = lastHitAt.get(hit.group);
+    if (last !== undefined && hit.startMs - last <= options.chordWindowMs) {
+      report.merged += 1;
+      continue;
+    }
+    lastHitAt.set(hit.group, hit.startMs);
+    const count = strikes.get(hit.group) ?? 0;
+    strikes.set(hit.group, count + 1);
+    candidates.push({
+      startMs: hit.startMs,
+      code: hit.codes[count % hit.codes.length],
+      order: hit.pitch,
+      durationMs: hit.durationMs,
+      folded: false,
+    });
   }
   return candidates;
 }

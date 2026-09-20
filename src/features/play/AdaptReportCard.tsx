@@ -124,7 +124,9 @@ export function AdaptReportCard({ report, hasTracks, pitchStats, percussion }: A
               <TooltipTrigger asChild>
                 <span className="mx-1 cursor-default underline decoration-dotted underline-offset-2">{report?.merged}</span>
               </TooltipTrigger>
-              <TooltipContent className="max-w-72">同一时刻映射到同一个键的音只按一次，常见于多轨齐奏，不算丢音。</TooltipContent>
+              <TooltipContent className="max-w-72">
+                同一时刻重复的音只按一次——音高类看键位，敲击类看声音（左右对称键算同一个声音）。常见于多轨齐奏，不算丢音。
+              </TooltipContent>
             </Tooltip>
             {report !== null && report.folded > 0 && <> · 折回 {report.folded}</>}
           </p>
