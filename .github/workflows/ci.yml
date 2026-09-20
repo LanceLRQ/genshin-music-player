@@ -71,7 +71,16 @@ jobs:
         run: |
           $version = '${{ steps.version.outputs.version }}'
           New-Item -ItemType Directory -Force portable | Out-Null
-          Copy-Item 'src-tauri/target/release/genshin-music-player.exe' 'portable/Genshin Music Player.exe'
+          # Tauri v2 会把主程序按 productName 重命名，两个名字都认；都没有就列出目录方便排查
+          $release = 'src-tauri/target/release'
+          $exe = Get-ChildItem $release -Filter '*.exe' |
+            Where-Object { $_.Name -in @('Genshin Music Player.exe', 'genshin-music-player.exe') } |
+            Select-Object -First 1
+          if (-not $exe) {
+            Get-ChildItem $release -Filter '*.exe' | Select-Object -ExpandProperty Name
+            throw 'target/release 里找不到应用主程序 exe'
+          }
+          Copy-Item $exe.FullName 'portable/Genshin Music Player.exe'
           @'
           Genshin Music Player 便携版
 
