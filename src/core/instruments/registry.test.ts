@@ -166,6 +166,19 @@ describe('mergeInstruments', () => {
     expect(warnings).toEqual(['自定义乐器 id「my-lyre」重复，已跳过「乙」']);
   });
 
+  it('内置敲击乐器的鼓映射覆盖 GM 全音域（35–81），音色都存在于键位', () => {
+    for (const profile of BUILTIN_INSTRUMENTS) {
+      if (profile.kind !== 'percussion') continue;
+      const voices = new Set(profile.rows.flatMap((row) => row.keys.map((key) => key.voice).filter((v) => v !== undefined)));
+      const drumNotes = profile.percussionMap?.drumNotes ?? {};
+      for (let note = 35; note <= 81; note += 1) {
+        const voice = drumNotes[String(note)];
+        expect(voice, `${profile.id} 缺少 GM ${note} 的映射`).toBeDefined();
+        expect(voices.has(voice), `${profile.id} 的 GM ${note} 映射到不存在的音色 ${voice}`).toBe(true);
+      }
+    }
+  });
+
   it('findInstrument 与 isBuiltinInstrumentId', () => {
     const { entries } = mergeInstruments([custom('my-lyre')]);
     expect(findInstrument(entries, 'my-lyre')?.name).toBe('my-lyre');

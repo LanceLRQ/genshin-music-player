@@ -32,6 +32,19 @@ interface EditingState {
   saved: boolean;
 }
 
+/** 鼓映射按音色分组：一行一个音色，右边的音符号按升序排列；音色顺序取其最小音符号的先后 */
+function groupDrumNotesByVoice(drumNotes: Record<string, string>): [string, number[]][] {
+  const groups = new Map<string, number[]>();
+  for (const [note, voice] of Object.entries(drumNotes)) {
+    const list = groups.get(voice) ?? [];
+    list.push(Number(note));
+    groups.set(voice, list);
+  }
+  return [...groups.entries()]
+    .map(([voice, notes]) => [voice, notes.sort((a, b) => a - b)] as [string, number[]])
+    .sort((a, b) => a[1][0] - b[1][0]);
+}
+
 interface ConfirmState {
   title: string;
   description: string;
@@ -282,12 +295,14 @@ export function InstrumentsPage() {
                 <Card>
                   <CardContent className="flex flex-col gap-2 px-3 py-2">
                     <p className="text-sm font-medium">鼓映射表</p>
+                    {/* 按音色分组展示：GM 全音域映射有几十条，逐条一行会撑爆详情页；音名显示，悬停可见音符号 */}
                     <div className="flex flex-col gap-1">
-                      {Object.entries(selected.profile.percussionMap.drumNotes).map(([note, voice]) => (
-                        <p key={note} className="flex gap-3 text-sm">
-                          <span className="w-16 font-mono">{note}</span>
-                          <span className="w-16">{voiceLabel(voice)}</span>
-                          <span className="text-muted-foreground">{midiToNoteName(Number(note))}</span>
+                      {groupDrumNotesByVoice(selected.profile.percussionMap.drumNotes).map(([voice, notes]) => (
+                        <p key={voice} className="flex gap-3 text-sm">
+                          <span className="w-14 shrink-0">{voiceLabel(voice)}</span>
+                          <span className="min-w-0 font-mono leading-6" title={notes.join('、')}>
+                            {notes.map(midiToNoteName).join('、')}
+                          </span>
                         </p>
                       ))}
                     </div>

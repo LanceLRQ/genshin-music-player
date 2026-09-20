@@ -103,7 +103,7 @@ describe('InstrumentEditor', () => {
     await user.click(screen.getByRole('button', { name: '切换并清空' }));
     expect(screen.queryByLabelText(/个键的音高/)).not.toBeInTheDocument();
     expect(screen.getByText('鼓映射表')).toBeInTheDocument();
-    expect(screen.getByLabelText('MIDI 音符号 1')).toBeInTheDocument();
+    expect(screen.getByRole('combobox', { name: '映射音符 1' })).toBeInTheDocument();
   });
 
   it('行的上移、删除与添加键、添加行', async () => {
@@ -160,13 +160,19 @@ describe('InstrumentEditor', () => {
   });
 
   it('鼓映射表：添加条目与恢复 GM 默认映射', async () => {
-    const { user } = renderEditor(drumProfile);
-    expect(screen.getAllByLabelText(/^MIDI 音符号/)).toHaveLength(11);
+    // 用小映射表测行为，避免渲染 47 行下拉拖慢用例；GM 全音域覆盖由 registry.test 的不变量保证
+    const small: InstrumentProfile = {
+      ...structuredClone(drumProfile),
+      percussionMap: { drumNotes: { '36': 'don', '38': 'ka' }, splitPitch: 'auto' },
+    };
+    const { user } = renderEditor(small);
+    expect(screen.getAllByRole('combobox', { name: /^映射音符/ })).toHaveLength(2);
     await user.click(screen.getByRole('button', { name: '添加' }));
-    expect(screen.getAllByLabelText(/^MIDI 音符号/)).toHaveLength(12);
+    expect(screen.getAllByRole('combobox', { name: /^映射音符/ })).toHaveLength(3);
     await user.click(screen.getByRole('button', { name: '恢复 GM 默认映射' }));
-    expect(screen.getAllByLabelText(/^MIDI 音符号/)).toHaveLength(11);
-  });
+    // GM 预设覆盖 35–81
+    expect(screen.getAllByRole('combobox', { name: /^映射音符/ })).toHaveLength(47);
+  }, 15000);
 
   it('分界音高：关闭自动后可输入音名', async () => {
     const { user } = renderEditor(drumProfile);

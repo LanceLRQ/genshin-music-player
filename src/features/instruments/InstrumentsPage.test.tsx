@@ -93,8 +93,8 @@ describe('InstrumentsPage 列表与详情', () => {
     const { user } = await renderPage();
     await user.click(screen.getByText('荒泷·盛世豪鼓'));
     expect(screen.getByText('鼓映射表')).toBeInTheDocument();
-    // GM 默认映射 35、36 都是咚：鼓映射表贡献 2 个，键帽预览（KeyS → don）再贡献 1 个
-    expect(screen.getAllByText('咚')).toHaveLength(3);
+    // 鼓映射表按音色分组展示：咚、咔各一行（GM 全音域映射），键帽预览（KeyS → don）再贡献 1 个
+    expect(screen.getAllByText('咚')).toHaveLength(2);
     expect(screen.getByText('分界音高：自动（中位数）')).toBeInTheDocument();
     expect(screen.getByText('按住时长 30ms · 最小重复间隔 96ms · 不可持续发声')).toBeInTheDocument();
   });

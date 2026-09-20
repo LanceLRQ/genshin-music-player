@@ -4,10 +4,13 @@ import { Button } from '@/components/ui/button';
 import { ButtonGroup } from '@/components/ui/button-group';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Slider } from '@/components/ui/slider';
 import { Switch } from '@/components/ui/switch';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
+import { drumNoteLabel } from '@/core/adapter/percussionMap';
 import { noteNameToMidi } from '@/core/music/pitch';
+import { voiceLabel } from '@/core/model/instrument';
 import type { InstrumentProfile } from '@/core/model/instrument';
 import type { AdaptOptions } from '@/core/model/timeline';
 import { formatSigned } from '@/lib/format';
@@ -15,6 +18,9 @@ import { cn } from '@/lib/utils';
 
 /** 关闭「自动」时分界音高的默认值（C4） */
 const MANUAL_SPLIT_PITCH = 60;
+
+/** 音色指定音符下拉的完整范围：MIDI 里鼓音符号不一定落在 GM 标准区 */
+const ALL_PITCHES = Array.from({ length: 128 }, (_, pitch) => pitch);
 
 interface AdaptOptionsPanelProps {
   profile: InstrumentProfile;
@@ -140,10 +146,56 @@ function SplitPitchRow({ auto, value, locked, onToggle, onCommit }: SplitPitchRo
   );
 }
 
+interface DrumVoiceNoteRowProps {
+  /** 音色名（显示用） */
+  label: string;
+  /** 已指定的音符号；undefined 表示跟随鼓映射表 */
+  pitch: number | undefined;
+  /** 已被其他音色指定的音符号，下拉里禁用避免一个音符配两个音色 */
+  taken: Set<number>;
+  locked: boolean;
+  onPick: (pitch: number | undefined) => void;
+}
+
+/** 敲击类的「音色 → 指定音符」行：默认自动（按鼓映射表），选定后该音符优先映射到这个音色 */
+function DrumVoiceNoteRow({ label, pitch, taken, locked, onPick }: DrumVoiceNoteRowProps) {
+  return (
+    <div className="flex items-center gap-3">
+      <span className="w-14 shrink-0 text-sm">{label}</span>
+      <Select
+        value={pitch === undefined ? 'auto' : String(pitch)}
+        onValueChange={(value) => onPick(value === 'auto' ? undefined : Number(value))}
+        disabled={locked}
+      >
+        <SelectTrigger className="w-44" aria-label={`指定${label}的音符`}>
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value="auto">自动（按鼓映射表）</SelectItem>
+          {ALL_PITCHES.map((note) => (
+            <SelectItem key={note} value={String(note)} disabled={taken.has(note) && note !== pitch}>
+              {drumNoteLabel(note)}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+    </div>
+  );
+}
+
 /** 适配参数内容片段（设计 01 第 4.5 节）：由演奏参数卡承载卡片样式，音高类与敲击类显示不同的参数集合 */
 export function AdaptOptionsPanel({ profile, options, locked, onChange }: AdaptOptionsPanelProps) {
   const [advancedOpen, setAdvancedOpen] = useState(false);
   const autoSplitFromProps = options.percussionSplitPitch === undefined;
+  const drumVoices = profile.kind === 'percussion'
+    ? [...new Set(profile.rows.flatMap((row) => row.keys.map((key) => key.voice).filter((voice) => voice !== undefined)))]
+    : [];
+  const setDrumVoiceNote = (voice: string, pitch: number | undefined) => {
+    const next = { ...options.drumVoiceNotes };
+    if (pitch === undefined) delete next[voice];
+    else next[voice] = pitch;
+    onChange({ ...options, drumVoiceNotes: Object.keys(next).length > 0 ? next : undefined });
+  };
   return (
     <>
       <span className="text-sm font-medium">适配参数</span>
@@ -200,14 +252,33 @@ export function AdaptOptionsPanel({ profile, options, locked, onChange }: AdaptO
           </div>
         </>
       ) : (
-        <SplitPitchRow
-          key={autoSplitFromProps ? 'auto' : 'manual'}
-          auto={autoSplitFromProps}
-          value={options.percussionSplitPitch}
-          locked={locked}
-          onToggle={(auto) => onChange({ ...options, percussionSplitPitch: auto ? undefined : MANUAL_SPLIT_PITCH })}
-          onCommit={(percussionSplitPitch) => onChange({ ...options, percussionSplitPitch })}
-        />
+        <>
+          <SplitPitchRow
+            key={autoSplitFromProps ? 'auto' : 'manual'}
+            auto={autoSplitFromProps}
+            value={options.percussionSplitPitch}
+            locked={locked}
+            onToggle={(auto) => onChange({ ...options, percussionSplitPitch: auto ? undefined : MANUAL_SPLIT_PITCH })}
+            onCommit={(percussionSplitPitch) => onChange({ ...options, percussionSplitPitch })}
+          />
+          {drumVoices.map((voice) => (
+            <DrumVoiceNoteRow
+              key={voice}
+              label={voiceLabel(voice)}
+              pitch={options.drumVoiceNotes?.[voice]}
+              taken={new Set(
+                Object.entries(options.drumVoiceNotes ?? {})
+                  .filter(([other]) => other !== voice)
+                  .map(([, pitch]) => pitch),
+              )}
+              locked={locked}
+              onPick={(pitch) => setDrumVoiceNote(voice, pitch)}
+            />
+          ))}
+          <p className="text-xs text-muted-foreground">
+            鼓轨按乐器鼓映射表转换；MIDI 的鼓音符号和默认映射对不上时，给音色直接指定一个音符，指定优先于映射表。
+          </p>
+        </>
       )}
       <Collapsible open={advancedOpen} onOpenChange={setAdvancedOpen}>
         <CollapsibleTrigger asChild>

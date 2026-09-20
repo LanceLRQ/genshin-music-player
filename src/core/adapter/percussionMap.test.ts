@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { BUILTIN_INSTRUMENTS } from '../instruments/registry';
 import type { Note } from '../model/score';
-import { DEFAULT_DRUM_NOTES, buildVoiceKeyMap, median, resolveVoice } from './percussionMap';
+import { DEFAULT_DRUM_NOTES, applyDrumVoiceNotes, buildVoiceKeyMap, drumNoteLabel, median, resolveVoice } from './percussionMap';
 
 const note = (fields: Partial<Note>): Note => ({ startMs: 0, durationMs: 100, velocity: 1, ...fields });
 const drumContext = { isDrum: true, drumNotes: DEFAULT_DRUM_NOTES, splitPitch: 60 };
@@ -46,5 +46,22 @@ describe('median', () => {
 
   it('空数组报错', () => {
     expect(() => median([])).toThrow('median 需要至少一个值');
+  });
+});
+
+describe('applyDrumVoiceNotes 与 drumNoteLabel', () => {
+  it('指定的音符覆盖鼓映射表，未指定部分保持原样', () => {
+    const merged = applyDrumVoiceNotes(DEFAULT_DRUM_NOTES, { don: 41 });
+    expect(merged['41']).toBe('don');
+    expect(merged['38']).toBe(DEFAULT_DRUM_NOTES['38']);
+  });
+
+  it('没有指定时返回等价的新表', () => {
+    expect(applyDrumVoiceNotes(DEFAULT_DRUM_NOTES, undefined)).toEqual(DEFAULT_DRUM_NOTES);
+  });
+
+  it('GM 音域的标签带音名与通用名，区外只有音名', () => {
+    expect(drumNoteLabel(35)).toBe('B1 · 原声底鼓');
+    expect(drumNoteLabel(90)).toBe('F#6');
   });
 });

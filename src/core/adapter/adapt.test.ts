@@ -163,6 +163,17 @@ describe('adapt：敲击类乐器', () => {
     expect(result.report.total).toBe(3);
   });
 
+  it('按音色指定的音符优先于鼓映射表', () => {
+    // 41 在内置映射里是「咔」，指定咚 = F2(41) 后应按 KeyS（咚）弹出
+    const result = adapt(
+      scoreOf(track('t0', [note(0, 41), note(500, 38)], true)),
+      drum,
+      options({ drumVoiceNotes: { don: 41 } }),
+    );
+    expect(codesOf(result)).toEqual([['KeyS'], ['KeyA']]);
+    expect(result.report.dropped.unmappedDrum).toBe(0);
+  });
+
   it('非鼓轨默认以音高中位数分界', () => {
     const result = adapt(scoreOf(track('t0', [note(0, 50), note(500, 70)])), drum, options());
     expect(codesOf(result)).toEqual([['KeyS'], ['KeyA']]);

@@ -6,26 +6,15 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
+import { drumNoteLabel, GM_DRUM_NOTES } from '@/core/adapter/percussionMap';
 import type { InstrumentProfile } from '@/core/model/instrument';
 import { midiToNoteName } from '@/core/music/pitch';
 import { parsePitchInput, voiceLabel } from './KeycapPreview';
 
 export type PercussionMap = NonNullable<InstrumentProfile['percussionMap']>;
 
-/** GM 鼓的默认映射（与内置乐器 festive-drum 一致） */
-export const GM_DRUM_NOTES: Record<string, string> = {
-  '35': 'don',
-  '36': 'don',
-  '37': 'ka',
-  '38': 'ka',
-  '40': 'ka',
-  '42': 'ka',
-  '44': 'ka',
-  '46': 'ka',
-  '49': 'ka',
-  '51': 'ka',
-  '57': 'ka',
-};
+/** 音符号下拉的完整范围：GM 打击乐标准区之外也允许选择 */
+const ALL_PITCHES = Array.from({ length: 128 }, (_, pitch) => pitch);
 
 /** 敲击类乐器没有映射表时的默认值 */
 export const DEFAULT_PERCUSSION_MAP: PercussionMap = { drumNotes: { '36': 'don', '38': 'ka' }, splitPitch: 'auto' };
@@ -40,22 +29,21 @@ interface PercussionMapEditorProps {
 /** 敲击类乐器的鼓映射表编辑：MIDI 音符号 → 音色，外加分界音高（自动 / 手动音名） */
 export function PercussionMapEditor({ voices, map, onChange }: PercussionMapEditorProps) {
   const entries = Object.entries(map.drumNotes);
+  const taken = new Set(Object.keys(map.drumNotes));
 
-  const renameNote = (oldNote: string, text: string) => {
-    const parsed = parsePitchInput(text);
-    if (parsed === undefined) return;
-    const note = String(parsed);
-    if (note === oldNote) return;
+  const moveNote = (fromNote: string, toPitch: number) => {
+    const toNote = String(toPitch);
+    if (toNote === fromNote) return;
     const drumNotes = { ...map.drumNotes };
-    drumNotes[note] = drumNotes[oldNote];
-    delete drumNotes[oldNote];
+    drumNotes[toNote] = drumNotes[fromNote];
+    delete drumNotes[fromNote];
     onChange({ ...map, drumNotes });
   };
 
   const addEntry = () => {
-    const taken = new Set(Object.keys(map.drumNotes));
+    const takenNums = new Set([...taken].map(Number));
     let note = 35;
-    while (taken.has(String(note))) note += 1;
+    while (takenNums.has(note)) note += 1;
     onChange({ ...map, drumNotes: { ...map.drumNotes, [String(note)]: voices[0] ?? 'don' } });
   };
 
@@ -68,7 +56,18 @@ export function PercussionMapEditor({ voices, map, onChange }: PercussionMapEdit
         <div className="flex flex-col gap-2">
           {entries.map(([note, voice], index) => (
             <div key={note} className="flex items-center gap-2">
-              <DrumNoteInput index={index} note={note} onCommit={(text) => renameNote(note, text)} />
+              <Select value={note} onValueChange={(value) => moveNote(note, Number(value))}>
+                <SelectTrigger className="w-48" aria-label={`映射音符 ${index + 1}`}>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {ALL_PITCHES.map((pitch) => (
+                    <SelectItem key={pitch} value={String(pitch)} disabled={taken.has(String(pitch)) && pitch !== Number(note)}>
+                      {drumNoteLabel(pitch)}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
               <Select value={voice} onValueChange={(value) => onChange({ ...map, drumNotes: { ...map.drumNotes, [note]: value } })}>
                 <SelectTrigger className="w-28" aria-label={`映射音色 ${index + 1}`}>
                   <SelectValue />
@@ -81,7 +80,6 @@ export function PercussionMapEditor({ voices, map, onChange }: PercussionMapEdit
                   ))}
                 </SelectContent>
               </Select>
-              <span className="text-sm text-muted-foreground">{midiToNoteName(Number(note))}</span>
               <Button
                 variant="ghost"
                 size="icon"
@@ -117,22 +115,6 @@ export function PercussionMapEditor({ voices, map, onChange }: PercussionMapEdit
         </div>
       </CardContent>
     </Card>
-  );
-}
-
-function DrumNoteInput({ index, note, onCommit }: { index: number; note: string; onCommit: (text: string) => void }) {
-  const [text, setText] = useState(note);
-  return (
-    <Input
-      aria-label={`MIDI 音符号 ${index + 1}`}
-      type="number"
-      min={0}
-      max={127}
-      value={text}
-      className="w-24"
-      onChange={(event) => setText(event.target.value)}
-      onBlur={() => onCommit(text)}
-    />
   );
 }
 

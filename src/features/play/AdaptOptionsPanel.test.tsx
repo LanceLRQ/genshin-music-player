@@ -70,6 +70,24 @@ describe('AdaptOptionsPanel（敲击类）', () => {
     expect(screen.getByText('低于分界音高的音映射为「咚」，其余映射为「咔」。')).toBeInTheDocument();
   });
 
+  it('按音色指定音符：默认自动，选定后回调 drumVoiceNotes', async () => {
+    const props = renderPanel({ profile: drum });
+    const user = userEvent.setup();
+    expect(screen.getByRole('combobox', { name: '指定咚的音符' })).toBeInTheDocument();
+    expect(screen.getByRole('combobox', { name: '指定咔的音符' })).toBeInTheDocument();
+    await user.click(screen.getByRole('combobox', { name: '指定咚的音符' }));
+    await user.click(screen.getByRole('option', { name: /F2 · 低音地嗵/ }));
+    expect(props.onChange).toHaveBeenLastCalledWith(expect.objectContaining({ drumVoiceNotes: { don: 41 } }));
+  });
+
+  it('按音色指定音符：选回自动则移除指定', async () => {
+    const props = renderPanel({ profile: drum, options: { ...options, drumVoiceNotes: { don: 41 } } });
+    const user = userEvent.setup();
+    await user.click(screen.getByRole('combobox', { name: '指定咚的音符' }));
+    await user.click(screen.getByRole('option', { name: '自动（按鼓映射表）' }));
+    expect(props.onChange).toHaveBeenLastCalledWith(expect.objectContaining({ drumVoiceNotes: undefined }));
+  });
+
   it('关闭自动分界音高后出现输入框，接受音名或 MIDI 号', async () => {
     const props = renderPanel({ profile: drum });
     const user = userEvent.setup();

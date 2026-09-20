@@ -15,6 +15,8 @@ export interface AdaptOptions {
   useChordKeys?: boolean;
   /** 覆盖乐器配置中的非鼓轨分界音高 */
   percussionSplitPitch?: number;
+  /** 敲击类乐器按音色直接指定鼓音符号（音色 → MIDI 音高号）；被指定的音符优先于乐器鼓映射表 */
+  drumVoiceNotes?: Record<string, number>;
 }
 
 export const DEFAULT_ADAPT_OPTIONS: Omit<AdaptOptions, 'tracks' | 'percussionSplitPitch'> = {

@@ -1,7 +1,7 @@
 import type { InstrumentProfile } from '../model/instrument';
 import type { Score, Track } from '../model/score';
 import type { AdaptOptions, AdaptReport, KeyTimeline, Press } from '../model/timeline';
-import { DEFAULT_DRUM_NOTES, buildVoiceKeyMap, median, resolveVoice } from './percussionMap';
+import { DEFAULT_DRUM_NOTES, applyDrumVoiceNotes, buildVoiceKeyMap, median, resolveVoice } from './percussionMap';
 import { buildPitchKeyMap, resolvePitch } from './pitchMap';
 
 export interface AdaptResult {
@@ -94,7 +94,7 @@ function collectPercussion(
   report: AdaptReport,
 ): Candidate[] {
   const voiceKeys = buildVoiceKeyMap(profile);
-  const drumNotes = profile.percussionMap?.drumNotes ?? DEFAULT_DRUM_NOTES;
+  const drumNotes = applyDrumVoiceNotes(profile.percussionMap?.drumNotes ?? DEFAULT_DRUM_NOTES, options.drumVoiceNotes);
   const splitPitch = options.percussionSplitPitch ?? resolveSplitPitch(tracks, profile);
   const candidates: Candidate[] = [];
   for (const track of tracks) {

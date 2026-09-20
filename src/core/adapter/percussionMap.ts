@@ -1,20 +1,128 @@
 import type { InstrumentProfile } from '../model/instrument';
 import type { Note } from '../model/score';
+import { midiToNoteName } from '../music/pitch';
 
-/** GM 鼓音色默认映射：底鼓为咚，军鼓、边击、踩镲、镲为咔 */
-export const DEFAULT_DRUM_NOTES: Readonly<Record<string, string>> = {
+/** GM 打击乐音符号（35–81）的通用名称，用于下拉与详情的显示 */
+export const GM_PERCUSSION_NAMES: Readonly<Record<number, string>> = {
+  35: '原声底鼓',
+  36: '底鼓',
+  37: '边击',
+  38: '原声军鼓',
+  39: '拍手',
+  40: '电子军鼓',
+  41: '低音地嗵',
+  42: '闭镲',
+  43: '高音地嗵',
+  44: '踩镲',
+  45: '低嗵',
+  46: '开镲',
+  47: '中低嗵',
+  48: '中高嗵',
+  49: '碎音镲',
+  50: '高嗵',
+  51: '叮镲',
+  52: '中国镲',
+  53: '叮镲碗',
+  54: '铃鼓',
+  55: '溅音镲',
+  56: '牛铃',
+  57: '碎音镲 2',
+  58: '颤音刮',
+  59: '叮镲 2',
+  60: '高邦戈鼓',
+  61: '低邦戈鼓',
+  62: '闷康加鼓',
+  63: '开康加鼓',
+  64: '低康加鼓',
+  65: '高天巴鼓',
+  66: '低天巴鼓',
+  67: '高阿哥哥铃',
+  68: '低阿哥哥铃',
+  69: '卡巴沙',
+  70: '沙锤',
+  71: '短口哨',
+  72: '长口哨',
+  73: '短刮瓜',
+  74: '长刮瓜',
+  75: '响棒',
+  76: '高木鱼',
+  77: '低木鱼',
+  78: '闷库加鼓',
+  79: '开库加鼓',
+  80: '闷三角铁',
+  81: '开三角铁',
+};
+
+/** 鼓音符号的显示标签：GM 音域带通用名（如「B1 · 原声底鼓」），其余只显示音名 */
+export function drumNoteLabel(pitch: number): string {
+  const name = GM_PERCUSSION_NAMES[pitch];
+  return name === undefined ? midiToNoteName(pitch) : `${midiToNoteName(pitch)} · ${name}`;
+}
+
+/** 把「音色 → 指定音符号」的临时指定合并进鼓映射表：被指定的音符号优先于乐器自带映射 */
+export function applyDrumVoiceNotes(
+  drumNotes: Readonly<Record<string, string>>,
+  drumVoiceNotes: Readonly<Record<string, number>> | undefined,
+): Record<string, string> {
+  const merged = { ...drumNotes };
+  if (drumVoiceNotes === undefined) return merged;
+  for (const [voice, pitch] of Object.entries(drumVoiceNotes)) merged[String(pitch)] = voice;
+  return merged;
+}
+
+/** GM 打击乐（35–81）音符号 → 音色的默认映射：底鼓为咚，其余一律为咔，保证 GM 鼓轨不因音符号缺失而丢音 */
+export const GM_DRUM_NOTES: Readonly<Record<string, string>> = {
   '35': 'don',
   '36': 'don',
   '37': 'ka',
   '38': 'ka',
+  '39': 'ka',
   '40': 'ka',
+  '41': 'ka',
   '42': 'ka',
+  '43': 'ka',
   '44': 'ka',
+  '45': 'ka',
   '46': 'ka',
+  '47': 'ka',
+  '48': 'ka',
   '49': 'ka',
+  '50': 'ka',
   '51': 'ka',
+  '52': 'ka',
+  '53': 'ka',
+  '54': 'ka',
+  '55': 'ka',
+  '56': 'ka',
   '57': 'ka',
+  '58': 'ka',
+  '59': 'ka',
+  '60': 'ka',
+  '61': 'ka',
+  '62': 'ka',
+  '63': 'ka',
+  '64': 'ka',
+  '65': 'ka',
+  '66': 'ka',
+  '67': 'ka',
+  '68': 'ka',
+  '69': 'ka',
+  '70': 'ka',
+  '71': 'ka',
+  '72': 'ka',
+  '73': 'ka',
+  '74': 'ka',
+  '75': 'ka',
+  '76': 'ka',
+  '77': 'ka',
+  '78': 'ka',
+  '79': 'ka',
+  '80': 'ka',
+  '81': 'ka',
 };
+
+/** 敲击类乐器没有配置 percussionMap 时的回退映射 */
+export const DEFAULT_DRUM_NOTES = GM_DRUM_NOTES;
 
 export interface VoiceContext {
   isDrum: boolean;
