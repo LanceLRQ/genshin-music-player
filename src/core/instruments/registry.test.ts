@@ -105,7 +105,7 @@ describe('内置乐器', () => {
     expect(pitchesOf(horn)).toEqual([60, 62, 64, 65, 67, 69, 71, 48, 50, 52, 53, 55, 57, 59]);
   });
 
-  it('聚聚鼓 8 键（上排 QWIO / 下排 ASKL，B/T/S/R 四音色双键，2026-09-19 游戏内实测修正）', () => {
+  it('聚聚鼓 8 键（上排 QWIO / 下排 ASKL，键帽 B/T/S/R；声音 底鼓/军鼓/擦/三连音，2026-09-20 复测修正）', () => {
     const drum = builtin('juju-drum');
     expect(drum.kind).toBe('percussion');
     expect(drum.rows.flatMap((row) => row.keys.map((k) => k.code))).toEqual([
@@ -118,8 +118,8 @@ describe('内置乐器', () => {
       'KeyK',
       'KeyL',
     ]);
-    expect(drum.rows[0].keys.map((k) => k.voice)).toEqual(['bass', 'tom', 'snare', 'ride']);
-    expect(drum.rows[1].keys.map((k) => k.voice)).toEqual(['bass-2', 'tom-2', 'snare-2', 'ride-2']);
+    expect(drum.rows[0].keys.map((k) => k.voice)).toEqual(['bass', 'snare', 'hi-hat', 'triplet']);
+    expect(drum.rows[1].keys.map((k) => k.voice)).toEqual(['bass-2', 'snare-2', 'hi-hat-2', 'triplet-2']);
   });
 
   it('绮筵之鼓 4 键（A 咔 / S 咚 / K 咚备用 / L 咔备用，与荒泷鼓同布局，2026-09-19 游戏内确认）', () => {

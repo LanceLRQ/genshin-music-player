@@ -222,7 +222,7 @@ describe('adapt：敲击类乐器', () => {
     const result = adapt(
       scoreOf(track('t0', [note(0, 36), note(50, 38), note(100, 42)], false)),
       juju,
-      options({ drumVoiceNotes: { bass: 36, snare: 38, ride: 42 } }),
+      options({ drumVoiceNotes: { bass: 36, 'hi-hat': 38, triplet: 42 } }),
     );
     expect(codesOf(result)).toEqual([['KeyQ'], ['KeyI'], ['KeyO']]);
     expect(result.report.dropped.unmappedDrum).toBe(0);

@@ -88,6 +88,33 @@ describe('AdaptOptionsPanel（敲击类）', () => {
     expect(props.onChange).toHaveBeenLastCalledWith(expect.objectContaining({ drumVoiceNotes: undefined }));
   });
 
+  it('聚聚鼓对称键合并为一行：只有基础音色成行，键位提示可见', () => {
+    const juju = BUILTIN_INSTRUMENTS.find((profile) => profile.id === 'juju-drum')!;
+    renderPanel({ profile: juju, options: { ...options, drumVoiceNotes: { bass: 36, 'hi-hat': 38 } } });
+    const rows = screen.getAllByRole('combobox').filter((element) => /的音符$/.test(element.getAttribute('aria-label') ?? ''));
+    expect(rows).toHaveLength(4);
+    expect(screen.getByRole('combobox', { name: '指定底鼓的音符' })).toBeInTheDocument();
+    expect(screen.getByRole('combobox', { name: '指定军鼓的音符' })).toBeInTheDocument();
+    expect(screen.getByRole('combobox', { name: '指定擦的音符' })).toBeInTheDocument();
+    expect(screen.getByRole('combobox', { name: '指定三连音的音符' })).toBeInTheDocument();
+    expect(screen.getByText('Q/A')).toBeInTheDocument();
+    expect(screen.getByText('W/S')).toBeInTheDocument();
+  });
+
+  it('聚聚鼓指定行：被其他声音占用的音高禁用，可选其余音高并回调', async () => {
+    const juju = BUILTIN_INSTRUMENTS.find((profile) => profile.id === 'juju-drum')!;
+    const props = renderPanel({ profile: juju, options: { ...options, drumVoiceNotes: { bass: 36, 'hi-hat': 38 } } });
+    const user = userEvent.setup();
+    // 军鼓行：36（底鼓占用）与 38（擦占用）都禁用
+    await user.click(screen.getByRole('combobox', { name: '指定军鼓的音符' }));
+    expect(screen.getByRole('option', { name: 'C2 · 底鼓' })).toHaveAttribute('aria-disabled', 'true');
+    expect(screen.getByRole('option', { name: 'D2 · 原声军鼓' })).toHaveAttribute('aria-disabled', 'true');
+    await user.click(screen.getByRole('option', { name: 'F2 · 低音地嗵' }));
+    expect(props.onChange).toHaveBeenLastCalledWith(
+      expect.objectContaining({ drumVoiceNotes: { bass: 36, 'hi-hat': 38, snare: 41 } }),
+    );
+  });
+
   it('关闭自动分界音高后出现输入框，接受音名或 MIDI 号', async () => {
     const props = renderPanel({ profile: drum });
     const user = userEvent.setup();

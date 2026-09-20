@@ -8,10 +8,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger } from '@/components/u
 import { Slider } from '@/components/ui/slider';
 import { Switch } from '@/components/ui/switch';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
-import { drumNoteLabel } from '@/core/adapter/percussionMap';
+import { drumNoteLabel, buildVoiceKeyGroups } from '@/core/adapter/percussionMap';
 import { midiToNoteName, noteNameToMidi } from '@/core/music/pitch';
 import { voiceLabel } from '@/core/model/instrument';
 import type { InstrumentProfile } from '@/core/model/instrument';
+import { keyLabel } from '@/core/model/keycodes';
 import type { AdaptOptions } from '@/core/model/timeline';
 import { formatSigned } from '@/lib/format';
 import { cn } from '@/lib/utils';
@@ -147,22 +148,28 @@ function SplitPitchRow({ auto, value, locked, onToggle, onCommit }: SplitPitchRo
 }
 
 interface DrumVoiceNoteRowProps {
-  /** 音色名（显示用） */
+  /** 声音名（显示用） */
   label: string;
+  /** 这个声音落在哪些键上（如 Q/A），提示与游戏内键位的对应 */
+  keyHint: string;
   /** 已指定的音符号；undefined 表示跟随鼓映射表 */
   pitch: number | undefined;
-  /** 已被其他音色指定的音符号，下拉里禁用避免一个音符配两个音色 */
+  /** 已被其他声音指定的音符号，下拉里禁用避免一个音符配两个声音 */
   taken: Set<number>;
   locked: boolean;
   onPick: (pitch: number | undefined) => void;
 }
 
-/** 「音色 → 指定音符」单项：音色名与下拉横向紧凑排列；basis 保证窄容器下每行至少两项。
+/** 「声音 → 指定音符」单项：对称备用键（-2）与主键是同一声音，合并为一行；
+ *  音色名与下拉横向紧凑排列，basis 保证窄容器下每行至少两项。
  *  收起时只显示音名或「自动」，完整的 GM 打击乐名称在展开的选项列表里看 */
-function DrumVoiceNoteRow({ label, pitch, taken, locked, onPick }: DrumVoiceNoteRowProps) {
+function DrumVoiceNoteRow({ label, keyHint, pitch, taken, locked, onPick }: DrumVoiceNoteRowProps) {
   return (
-    <div className="flex min-w-0 flex-1 basis-32 items-center gap-1.5">
-      <span className="shrink-0 text-sm">{label}</span>
+    <div className="flex min-w-0 flex-1 basis-36 items-center gap-1.5">
+      <span className="shrink-0 text-sm">
+        {label}
+        <span className="ml-1 text-xs text-muted-foreground">{keyHint}</span>
+      </span>
       <Select
         value={pitch === undefined ? 'auto' : String(pitch)}
         onValueChange={(value) => onPick(value === 'auto' ? undefined : Number(value))}
@@ -188,9 +195,8 @@ function DrumVoiceNoteRow({ label, pitch, taken, locked, onPick }: DrumVoiceNote
 export function AdaptOptionsPanel({ profile, options, locked, onChange }: AdaptOptionsPanelProps) {
   const [advancedOpen, setAdvancedOpen] = useState(false);
   const autoSplitFromProps = options.percussionSplitPitch === undefined;
-  const drumVoices = profile.kind === 'percussion'
-    ? [...new Set(profile.rows.flatMap((row) => row.keys.map((key) => key.voice).filter((voice) => voice !== undefined)))]
-    : [];
+  // 对称备用键（-2）与主键是同一声音：按 baseVoice 分组，一行一个下拉，改一处即整组联动
+  const drumVoiceGroups = profile.kind === 'percussion' ? [...buildVoiceKeyGroups(profile)] : [];
   const setDrumVoiceNote = (voice: string, pitch: number | undefined) => {
     const next = { ...options.drumVoiceNotes };
     if (pitch === undefined) delete next[voice];
@@ -263,10 +269,11 @@ export function AdaptOptionsPanel({ profile, options, locked, onChange }: AdaptO
             onCommit={(percussionSplitPitch) => onChange({ ...options, percussionSplitPitch })}
           />
           <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
-            {drumVoices.map((voice) => (
+            {drumVoiceGroups.map(([voice, codes]) => (
               <DrumVoiceNoteRow
                 key={voice}
                 label={voiceLabel(voice)}
+                keyHint={codes.map(keyLabel).join('/')}
                 pitch={options.drumVoiceNotes?.[voice]}
                 taken={new Set(
                   Object.entries(options.drumVoiceNotes ?? {})
@@ -279,7 +286,7 @@ export function AdaptOptionsPanel({ profile, options, locked, onChange }: AdaptO
             ))}
           </div>
           <p className="text-xs text-muted-foreground">
-            鼓轨按乐器鼓映射表转换；MIDI 的鼓音符号和默认映射对不上、或鼓谱写在了普通音轨上时，给音色直接指定一个音符（如 bass → C2），指定优先于映射表和分界音高。
+            鼓轨按乐器鼓映射表转换；MIDI 的鼓音符号和默认映射对不上、或鼓谱写在了普通音轨上时，给声音直接指定一个音符（如 底鼓 → C2），指定优先于映射表和分界音高。带对称键（如 Q/A）的声音左右轮流击打。
           </p>
         </>
       )}

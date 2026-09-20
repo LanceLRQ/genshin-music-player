@@ -74,15 +74,14 @@ export function applyDrumVoiceNotes(
  * 自动推荐「音色 → 指定音符」：按谱中音高的出现数量降序逐个分配——
  * 乐器鼓映射表（含 GM 预设）命中的音高沿用其音色，表外的音高按音高升序
  * 分给还没被占用的音色（行序）。音高多于音色时数量少的不再分配。
+ * 对称备用键（-2 后缀）归并为同一声音，结果一律以基础音色为键。
  */
 export function recommendDrumVoiceNotes(
   notes: readonly { pitch?: number }[],
   profile: InstrumentProfile,
 ): Record<string, number> | undefined {
   if (profile.kind !== 'percussion') return undefined;
-  const voices = [
-    ...new Set(profile.rows.flatMap((row) => row.keys.map((key) => key.voice).filter((voice) => voice !== undefined))),
-  ];
+  const voices = [...buildVoiceKeyGroups(profile).keys()];
   if (voices.length === 0) return undefined;
   const table = profile.percussionMap?.drumNotes ?? DEFAULT_DRUM_NOTES;
 
@@ -98,7 +97,8 @@ export function recommendDrumVoiceNotes(
   const taken = new Set<string>();
   const unmapped: number[] = [];
   for (const pitch of byCount) {
-    const voice = table[String(pitch)];
+    const hit = table[String(pitch)];
+    const voice = hit === undefined ? undefined : baseVoice(hit);
     if (voice !== undefined && !taken.has(voice) && voices.includes(voice)) {
       result[voice] = pitch;
       taken.add(voice);

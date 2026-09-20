@@ -133,23 +133,25 @@ describe('敲击类推荐：鼓轨优先与音色指定预填', () => {
     expect(defaultTrackIds(melodyOnly, juju)).toEqual(['t0']);
   });
 
-  it('recommendDrumVoiceNotes：GM 表命中的音高沿用音色，表外音高按音高序分给剩余音色', () => {
-    // 36→bass-2、38→snare-2、42→ride-2 都在聚聚鼓 GM 表内；99 表外 → 剩余音色里排最前的 bass
+  it('recommendDrumVoiceNotes：GM 表命中的音高沿用声音，表外音高按音高序分给剩余声音', () => {
+    // 36→bass、38→hi-hat 都在聚聚鼓 GM 表内；99 表外 → 剩余声音里排最前的 snare
     const notes = [...Array.from({ length: 10 }, () => note(0, 36)), ...Array.from({ length: 6 }, () => note(0, 38)), ...Array.from({ length: 4 }, () => note(0, 99))];
-    expect(recommendDrumVoiceNotes(notes, juju)).toEqual({ bass: 99, 'bass-2': 36, 'snare-2': 38 });
+    expect(recommendDrumVoiceNotes(notes, juju)).toEqual({ bass: 36, 'hi-hat': 38, snare: 99 });
   });
 
-  it('音高多于音色时只保留数量最多的前 N 个（聚聚鼓 8 个音色）', () => {
-    // 10 个不同音高，数量从多到少；只有前 8 个能分到音色，最少的两个被舍弃
+  it('映射表写到 -2 变体时也归并到基础音色（预填不落到孪生行）', () => {
+    // 绮筵之鼓表内 36→don-2、38→ka-2；结果应以 don / ka 为键
+    const banquet = builtin('banquet-drum');
+    const notes = [...Array.from({ length: 3 }, () => note(0, 36)), note(0, 38)];
+    expect(recommendDrumVoiceNotes(notes, banquet)).toEqual({ don: 36, ka: 38 });
+  });
+
+  it('音高多于声音组时只保留数量最多的前 N 个（聚聚鼓 4 个声音组）', () => {
+    // 10 个不同音高，数量从多到少；只有前 4 个能分到声音组，其余被舍弃
     const pitches = [36, 38, 42, 41, 43, 48, 49, 50, 51, 57];
     const many = pitches.flatMap((pitch, weight) => Array.from({ length: 10 - weight }, () => note(0, pitch)));
     const result = recommendDrumVoiceNotes(many, juju)!;
-    expect(Object.keys(result)).toHaveLength(8);
-    expect(Object.values(result)).toContain(36);
-    // 57 在 GM 表里独立映射 snare（未被占用）照样命中；撞车落到 unmapped 的 50/51 没有剩余音色才被舍弃
-    expect(Object.values(result)).toContain(57);
-    expect(Object.values(result)).not.toContain(50);
-    expect(Object.values(result)).not.toContain(51);
+    expect(result).toEqual({ bass: 36, 'hi-hat': 38, triplet: 42, snare: 41 });
   });
 
   it('recommendOptions 为敲击类预填 drumVoiceNotes，音高类不填', () => {

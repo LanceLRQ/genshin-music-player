@@ -1,5 +1,25 @@
 import { describe, expect, it } from 'vitest';
-import { validateInstrumentProfile } from './instrument';
+import { validateInstrumentProfile, voiceLabel } from './instrument';
+
+describe('voiceLabel', () => {
+  it('咚/咔及其带序号变体显示中文', () => {
+    expect(voiceLabel('don')).toBe('咚');
+    expect(voiceLabel('ka')).toBe('咔');
+    expect(voiceLabel('don-2')).toBe('咚-2');
+  });
+
+  it('标准鼓音色显示中文名，对称变体带序号', () => {
+    expect(voiceLabel('bass')).toBe('底鼓');
+    expect(voiceLabel('snare')).toBe('军鼓');
+    expect(voiceLabel('hi-hat')).toBe('擦');
+    expect(voiceLabel('triplet')).toBe('三连音');
+    expect(voiceLabel('hi-hat-2')).toBe('擦-2');
+  });
+
+  it('未知音色原样返回', () => {
+    expect(voiceLabel('custom')).toBe('custom');
+  });
+});
 
 function pitchedProfile() {
   return {

@@ -155,12 +155,26 @@ export const InstrumentProfileSchema = z
 export type InstrumentKey = z.infer<typeof InstrumentKeySchema>;
 export type InstrumentProfile = z.infer<typeof InstrumentProfileSchema>;
 
-/** 敲击音色的显示名：don → 咚、ka → 咔（含 don-2 等带序号的变体，多键鼓会用），其余原样 */
+/** 多音色鼓的标准音色中文名（键帽字母 B/T/S/R 来自游戏界面，声音语义为实测结论） */
+const DRUM_VOICE_LABELS: Readonly<Record<string, string>> = {
+  bass: '底鼓',
+  snare: '军鼓',
+  'hi-hat': '擦',
+  triplet: '三连音',
+};
+
+/** 敲击音色的显示名：don → 咚、ka → 咔、标准鼓音色 → 中文名（含 -2 等带序号的变体），其余原样 */
 export function voiceLabel(voice: string): string {
   const match = /^(don|ka)(?:-(\d+))?$/.exec(voice);
-  if (!match) return voice;
-  const base = match[1] === 'don' ? '咚' : '咔';
-  return match[2] ? `${base}-${match[2]}` : base;
+  if (match) {
+    const base = match[1] === 'don' ? '咚' : '咔';
+    return match[2] ? `${base}-${match[2]}` : base;
+  }
+  const suffix = /-\d+$/.exec(voice);
+  const base = suffix ? voice.slice(0, suffix.index) : voice;
+  const label = DRUM_VOICE_LABELS[base];
+  if (label === undefined) return voice;
+  return suffix ? `${label}-${suffix[0].slice(1)}` : label;
 }
 
 export type ValidationResult<T> = { ok: true; value: T } | { ok: false; errors: string[] };

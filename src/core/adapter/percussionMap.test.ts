@@ -43,7 +43,7 @@ describe('buildVoiceKeyGroups 与 baseVoice', () => {
   it('按声音归并键位：对称备用键（-2 后缀）进同一组，组内按行序', () => {
     const juju = BUILTIN_INSTRUMENTS.find((p) => p.id === 'juju-drum')!;
     expect(buildVoiceKeyGroups(juju).get('bass')).toEqual(['KeyQ', 'KeyA']);
-    expect(buildVoiceKeyGroups(juju).get('ride')).toEqual(['KeyO', 'KeyL']);
+    expect(buildVoiceKeyGroups(juju).get('triplet')).toEqual(['KeyO', 'KeyL']);
   });
 
   it('没有对称键的乐器每组只有一个键', () => {
