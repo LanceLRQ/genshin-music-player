@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { ButtonGroup } from '@/components/ui/button-group';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Input } from '@/components/ui/input';
-import { Select, SelectContent, SelectItem, SelectTrigger } from '@/components/ui/select';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Slider } from '@/components/ui/slider';
 import { Switch } from '@/components/ui/switch';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
@@ -176,7 +176,9 @@ function DrumVoiceNoteRow({ label, keyHint, pitch, taken, locked, onPick }: Drum
         disabled={locked}
       >
         <SelectTrigger className="h-8 min-w-0 flex-1" aria-label={`指定${label}的音符`}>
-          {pitch === undefined ? '自动' : midiToNoteName(pitch)}
+          {/* 必须用 SelectValue 包住：它同时把节点注册为 Radix 的 valueNode，
+              item-aligned 定位缺了它会直接跳过定位，浮层落到屏幕外打不开 */}
+          <SelectValue>{pitch === undefined ? '自动' : midiToNoteName(pitch)}</SelectValue>
         </SelectTrigger>
         <SelectContent>
           <SelectItem value="auto">自动（按鼓映射表）</SelectItem>
