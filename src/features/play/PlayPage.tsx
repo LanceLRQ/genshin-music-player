@@ -26,7 +26,7 @@ import { useSettingsStore } from '@/stores/settingsStore';
 import { useTransportStore } from '@/stores/transportStore';
 import { AdaptOptionsPanel } from './AdaptOptionsPanel';
 import { AdaptReportCard } from './AdaptReportCard';
-import { scoreDurationMs } from './scoreInfo';
+import { pitchHistogram, scoreDurationMs } from './scoreInfo';
 import { ImportMenu, type TextScoreTab } from './ImportMenu';
 import { InstrumentSelect } from './InstrumentSelect';
 import { OutputDeviceSelect } from './OutputDeviceSelect';
@@ -86,6 +86,7 @@ export function PlayPage() {
   const hasTimeline = !!execution && execution.events.length > 0;
   const { timeline, report, rates } = useAdaptation();
   const checkedIds = useMemo(() => options?.tracks ?? [], [options]);
+  const pitchStats = useMemo(() => (score ? pitchHistogram(score, checkedIds) : []), [score, checkedIds]);
 
   const [textDialog, setTextDialog] = useState<TextDialogState | null>(null);
   const [dragOver, setDragOver] = useState(false);
@@ -327,7 +328,12 @@ export function PlayPage() {
               />
             </div>
             <div className="border-t p-4 pt-3">
-              <AdaptReportCard report={report} hasTracks={checkedIds.length > 0} />
+              <AdaptReportCard
+                report={report}
+                hasTracks={checkedIds.length > 0}
+                pitchStats={pitchStats}
+                percussion={profile.kind === 'percussion'}
+              />
             </div>
           </div>
         )}

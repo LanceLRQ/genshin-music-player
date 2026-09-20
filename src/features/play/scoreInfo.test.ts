@@ -5,6 +5,7 @@ import {
   formatTimeShort,
   guessTextFormat,
   parseTimeInput,
+  pitchHistogram,
   rateBgClass,
   rateTextClass,
   scoreDurationMs,
@@ -130,5 +131,33 @@ describe('DROPPED_ITEMS', () => {
       'unmappedDrum',
     ]);
     expect(DROPPED_ITEMS.every((item) => item.label.length > 0 && item.tooltip.length > 0)).toBe(true);
+  });
+});
+
+describe('pitchHistogram', () => {
+  it('只统计勾选音轨、按音高升序，数量为 0 的音高不出现', () => {
+    const score = {
+      meta: { title: 't', source: 'midi' as const },
+      tracks: [
+        { id: 't0', name: 'a', isDrum: false, notes: [
+          { startMs: 0, durationMs: 100, pitch: 60, velocity: 1 },
+          { startMs: 100, durationMs: 100, pitch: 72, velocity: 1 },
+          { startMs: 200, durationMs: 100, pitch: 60, velocity: 1 },
+        ] },
+        { id: 't1', name: 'b', isDrum: false, notes: [
+          { startMs: 0, durationMs: 100, pitch: 67, velocity: 1 },
+        ] },
+      ],
+    };
+    expect(pitchHistogram(score, ['t0'])).toEqual([
+      { pitch: 60, count: 2 },
+      { pitch: 72, count: 1 },
+    ]);
+    expect(pitchHistogram(score, ['t0', 't1'])).toEqual([
+      { pitch: 60, count: 2 },
+      { pitch: 67, count: 1 },
+      { pitch: 72, count: 1 },
+    ]);
+    expect(pitchHistogram(score, [])).toEqual([]);
   });
 });

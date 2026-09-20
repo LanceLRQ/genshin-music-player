@@ -117,3 +117,23 @@ export const DROPPED_ITEMS: readonly DroppedItemInfo[] = [
     tooltip: '敲击音色找不到对应的键，或音高类乐器遇到了敲击音符。换用敲击类乐器，或编辑乐器配置里的鼓映射表。',
   },
 ];
+
+export interface PitchCount {
+  pitch: number;
+  count: number;
+}
+
+/** 勾选音轨的源音高直方图：按音高升序返回，数量为 0 的音高天然不出现 */
+export function pitchHistogram(score: Score, checkedIds: readonly string[]): PitchCount[] {
+  const counts = new Map<number, number>();
+  for (const track of score.tracks) {
+    if (!checkedIds.includes(track.id)) continue;
+    for (const note of track.notes) {
+      if (note.pitch === undefined) continue;
+      counts.set(note.pitch, (counts.get(note.pitch) ?? 0) + 1);
+    }
+  }
+  return [...counts.entries()]
+    .map(([pitch, count]) => ({ pitch, count }))
+    .sort((a, b) => a.pitch - b.pitch);
+}
