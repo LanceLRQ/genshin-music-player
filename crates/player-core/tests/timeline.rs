@@ -9,6 +9,14 @@ fn press(t_ms: f64, codes: &[&str], hold_ms: f64) -> Press {
         t_ms,
         codes: codes.iter().map(|code| code.to_string()).collect(),
         hold_ms,
+        sustain_ms: None,
+    }
+}
+
+fn press_sustain(t_ms: f64, codes: &[&str], hold_ms: f64, sustain_ms: f64) -> Press {
+    Press {
+        sustain_ms: Some(sustain_ms),
+        ..press(t_ms, codes, hold_ms)
     }
 }
 
@@ -193,6 +201,27 @@ fn speed_scales_press_time_but_not_hold() {
     let slow = build(&source, with_speed(0.5));
     assert_eq!(slow.events[0].t_ms, 2000.0);
     assert_eq!(slow.events[1].t_ms, 2030.0);
+}
+
+#[test]
+fn sustain_ms_scales_with_speed_but_never_below_hold_ms() {
+    // 2 倍速下 400ms 音长换算成 200ms，仍大于 hold_ms(30)，按 200ms 松开
+    let source = timeline(40.0, vec![press_sustain(1000.0, &["KeyA"], 30.0, 400.0)]);
+    let fast = build(&source, with_speed(2.0));
+    assert_eq!(
+        fast.events,
+        vec![event(500.0, &[], &["KeyA"]), event(700.0, &["KeyA"], &[])]
+    );
+
+    // 2 倍速下换算成 20ms，小于 hold_ms(30)，取 hold_ms
+    let short = timeline(40.0, vec![press_sustain(0.0, &["KeyA"], 30.0, 40.0)]);
+    let execution = build(&short, with_speed(2.0));
+    assert_eq!(execution.events[1].t_ms, 30.0);
+
+    // 没有 sustain_ms 的点按不随变速缩放（与既有行为一致）
+    let plain = timeline(40.0, vec![press(1000.0, &["KeyA"], 30.0)]);
+    let plain_execution = build(&plain, with_speed(2.0));
+    assert_eq!(plain_execution.events[1].t_ms, 530.0);
 }
 
 #[test]
@@ -544,6 +573,14 @@ fn rejects_invalid_press_fields() {
         (
             press(0.0, &["KeyA", "KeyA"], 30.0),
             "第 1 个按键包含重复的键码「KeyA」",
+        ),
+        (
+            press_sustain(0.0, &["KeyA"], 30.0, 0.0),
+            "第 1 个按键的按住音长必须大于 0",
+        ),
+        (
+            press_sustain(0.0, &["KeyA"], 30.0, f64::NAN),
+            "第 1 个按键的按住音长必须大于 0",
         ),
     ];
     for (bad, message) in cases {

@@ -17,7 +17,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { isBuiltinInstrumentId } from '@/core/instruments/registry';
-import { type InstrumentProfile, validateInstrumentProfile } from '@/core/model/instrument';
+import { INSTRUMENT_CATEGORY_LABELS, type InstrumentProfile, validateInstrumentProfile } from '@/core/model/instrument';
 import { midiToNoteName } from '@/core/music/pitch';
 import { useNavigationStore } from '@/stores/navigationStore';
 import { useInstrumentStore } from '@/stores/instrumentStore';
@@ -110,6 +110,7 @@ export function InstrumentsPage() {
       id: `custom-${Date.now()}`,
       name: '新建乐器',
       kind: 'pitched',
+      category: 'custom',
       status: 'unverified',
       rows: [{ label: '高音', keys: [{ code: 'KeyQ', pitch: 72 }] }],
       timing: { holdMs: 30, minRepeatGapMs: 40, sustain: false },
@@ -271,6 +272,8 @@ export function InstrumentsPage() {
                 <span>{selected.builtin ? '内置' : '自定义'}</span>
                 <span>·</span>
                 <span>{selected.profile.kind === 'percussion' ? '敲击类' : '音高类'}</span>
+                <span>·</span>
+                <span>{INSTRUMENT_CATEGORY_LABELS[selected.profile.category]}</span>
                 <Badge variant="secondary">{selected.profile.status === 'verified' ? '已验证' : '待实测'}</Badge>
                 <span>·</span>
                 <span className="font-mono text-xs">{selected.profile.id}</span>

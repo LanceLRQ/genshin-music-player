@@ -3,6 +3,7 @@
   "id": "floral-zither",
   "name": "镜花之琴",
   "kind": "pitched",
+  "category": "lyre",
   "status": "verified",
   "rows": [
     {

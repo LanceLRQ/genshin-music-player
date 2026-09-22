@@ -27,14 +27,40 @@ fn key_timeline_reads_camel_case_json_from_frontend() {
                     t_ms: 0.0,
                     codes: vec!["KeyQ".to_string()],
                     hold_ms: 30.0,
+                    sustain_ms: None,
                 },
                 Press {
                     t_ms: 1000.5,
                     codes: vec!["KeyA".to_string(), "KeyD".to_string()],
                     hold_ms: 30.0,
+                    sustain_ms: None,
                 },
             ],
         }
+    );
+}
+
+#[test]
+fn press_sustain_ms_defaults_to_none_and_round_trips_camel_case() {
+    let press: Press = serde_json::from_value(json!({
+        "tMs": 0,
+        "codes": ["KeyQ"],
+        "holdMs": 30
+    }))
+    .unwrap();
+    assert_eq!(press.sustain_ms, None);
+
+    let press: Press = serde_json::from_value(json!({
+        "tMs": 0,
+        "codes": ["KeyQ"],
+        "holdMs": 30,
+        "sustainMs": 400
+    }))
+    .unwrap();
+    assert_eq!(press.sustain_ms, Some(400.0));
+    assert_eq!(
+        serde_json::to_value(&press).unwrap(),
+        json!({ "tMs": 0.0, "codes": ["KeyQ"], "holdMs": 30.0, "sustainMs": 400.0 })
     );
 }
 

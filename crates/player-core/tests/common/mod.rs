@@ -99,6 +99,7 @@ pub fn execution_with(
                 t_ms: *t_ms,
                 codes: codes(keys),
                 hold_ms: *hold_ms,
+                sustain_ms: None,
             })
             .collect(),
     };

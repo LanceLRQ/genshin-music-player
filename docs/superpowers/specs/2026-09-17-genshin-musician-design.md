@@ -108,6 +108,8 @@ interface Note {
   "id": "windsong-lyre",            // kebab-case，全局唯一
   "name": "风物之诗琴",
   "kind": "pitched",                // "pitched" | "percussion"
+  "category": "lyre",               // "lyre" | "drum" | "horn" | "vocal" | "custom"，缺省 "custom"；
+                                     // 只有 "horn"、"vocal" 在游戏里按住持续发声
   "status": "verified",             // "verified" | "unverified"
   "rows": [
     { "label": "高音", "keys": [ { "pitch": 72, "code": "KeyQ" }, ... ] },
@@ -144,7 +146,8 @@ interface KeyTimeline {
 interface Press {
   tMs: number;                        // 在乐谱中的时间
   codes: string[];                    // 同时按下的键；多个键表示和弦，发送时是原子操作
-  holdMs: number;                     // 按住时长；sustain 乐器取音符时值（不小于 timing.holdMs）
+  holdMs: number;                     // 按住时长；按音长时取 timing.holdMs，固定时长时取 holdMsOverride ?? timing.holdMs
+  sustainMs?: number;                 // 需要按音长按住时的目标音长（未经变速）；只在音长大于 holdMs 时设置
 }
 interface AdaptReport {
   total: number; played: number; folded: number;
@@ -178,7 +181,7 @@ interface ExecutionTimeline {
 生成规则（`player-core::timeline`，纯函数）：
 
 1. 截取范围：只保留 `range.startMs ≤ tMs < range.endMs` 的按键。
-2. 变速：`t' = (tMs − startMs) / speed`，`holdMs` 一律不缩放。sustain 乐器加速后如果和下一次同键按下重叠，由第 4 步把松开时间提前；目前没有 sustain 乐器，暂不做更细的处理。
+2. 变速：`t' = (tMs − startMs) / speed`。`holdMs` 本身不缩放；有 `sustainMs` 时，实际按住时长取 `max(holdMs, sustainMs / speed)`，保证按音长持续发声的乐器（晚风圆号、沃雅妮莎等）变速后仍能覆盖音符时值。加速后如果和下一次同键按下重叠，由第 4 步把松开时间提前。
 3. 人性化：用种子初始化 `ChaCha8Rng`，给每个按键加一个 `[−maxJitterMs, +maxJitterMs]` 内的均匀随机偏移。一个和弦共用同一个偏移。偏移后不能小于 0。
 4. 同键冲突处理：按键按时间重新排序后，检查同一个键的相邻两次按下（最小间隔取 `max(minRepeatGapMs, 2)`，保证松开时间能严格落在两次按下之间）：
    - 间隔小于最小间隔时，丢掉后一次，计入 `dropped`；
@@ -260,8 +263,12 @@ interface AdaptOptions {
   maxPolyphony: number;                  // >= 1，1 表示只留旋律
   chordWindowMs: number;                 // 默认 15
   percussionSplitPitch?: number;         // 覆盖乐器配置中的 splitPitch
+  useNoteDuration?: boolean;             // 按 MIDI 音长按键，未设置时取 timing.sustain；只对自定义乐器、category 为 horn/vocal 的内置乐器生效
+  holdMsOverride?: number;               // 固定时长模式（按音长关闭）下覆盖 timing.holdMs（10–4000ms），生效范围同 useNoteDuration
 }
 ```
+
+`useNoteDuration` / `holdMsOverride` 的资格判断由 `src/core/instruments/registry.ts` 的 `supportsHoldControl` 统一给出：自定义乐器恒为 true；内置乐器只有 `category` 为 `horn` 或 `vocal` 才为 true。`adapt` 函数本身不做这个判断，调用方（演奏页、单轨试听）在调用前用 `stripHoldControlOptions` 剥离不合规乐器的这两项参数。
 
 ### 7.2 音高类流程
 
@@ -273,7 +280,7 @@ interface AdaptOptions {
    - 超出音域 → `fold` 就按八度折回音域内并重新查找（计入 `folded`，折回后仍找不到键就再按 `blackKeyPolicy` 处理）；`drop` 就丢弃，计入 `outOfRange`。
 4. 限制复音数：把起音时间差在 `chordWindowMs` 以内的音分成一组，组的时间取组内最早的起音。组内按音高从高到低处理：映射到已选键的音计入 `merged`（合并，不算丢音）；其余音保留前 `maxPolyphony` 个，多出来的计入 `polyphony`。
 5. 处理过密：同一个键相邻两次按下的间隔小于 `minRepeatGapMs` 时，丢掉后一次，计入 `tooDense`。
-6. 生成按键：每组生成一个 `Press`。`holdMs` 取 `timing.holdMs`；sustain 乐器取 `max(组内最长时值, timing.holdMs)`。
+6. 生成按键：每组生成一个 `Press`。先定 `sustain = useNoteDuration ?? timing.sustain`；`holdMs` 取 `baseHold`：按音长时为 `timing.holdMs`（只作最短按住兜底），固定时长时为 `holdMsOverride ?? timing.holdMs`。`sustain` 为真且组内最长时值大于 `baseHold` 时，额外设置 `sustainMs` 为组内最长时值。和弦键路径（同一组收成一个和弦键）只应用 `baseHold`，不设置 `sustainMs`。
 
 ### 7.3 敲击类流程
 

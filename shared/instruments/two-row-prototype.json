@@ -3,6 +3,7 @@
   "id": "two-row-prototype",
   "name": "沃雅妮莎",
   "kind": "pitched",
+  "category": "vocal",
   "status": "verified",
   "rows": [
     {
@@ -30,5 +31,5 @@
       ]
     }
   ],
-  "timing": { "holdMs": 30, "minRepeatGapMs": 40, "sustain": false }
+  "timing": { "holdMs": 30, "minRepeatGapMs": 40, "sustain": true }
 }

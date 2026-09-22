@@ -162,6 +162,7 @@ pub fn key_timeline(presses: &[(f64, &str)], duration_ms: f64) -> KeyTimeline {
                 t_ms: *t_ms,
                 codes: vec![code.to_string()],
                 hold_ms: 10.0,
+                sustain_ms: None,
             })
             .collect(),
     }

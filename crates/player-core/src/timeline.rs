@@ -37,6 +37,13 @@ pub fn validate_timeline(timeline: &KeyTimeline) -> Result<(), CoreError> {
                 "第 {number} 个按键的按住时长必须大于 0"
             )));
         }
+        if let Some(sustain_ms) = press.sustain_ms {
+            if !(sustain_ms.is_finite() && sustain_ms > 0.0) {
+                return Err(CoreError::timeline_invalid(format!(
+                    "第 {number} 个按键的按住音长必须大于 0"
+                )));
+            }
+        }
         if press.codes.is_empty() {
             return Err(CoreError::timeline_invalid(format!(
                 "第 {number} 个按键没有键码"
@@ -132,7 +139,12 @@ fn slice_and_scale<'a>(
         .map(|press| ScheduledPress {
             t_ms: (press.t_ms - range.start_ms) / params.speed,
             codes: &press.codes,
-            hold_ms: press.hold_ms,
+            // 点按（无 sustain_ms）按住时长不随变速缩放；需要按音长按住时，
+            // 目标音长按速度换算后与 hold_ms 取较大值，保证仍不短于游戏识别按键的物理下限
+            hold_ms: match press.sustain_ms {
+                Some(sustain_ms) => press.hold_ms.max(sustain_ms / params.speed),
+                None => press.hold_ms,
+            },
         })
         .collect()
 }

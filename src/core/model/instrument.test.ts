@@ -174,6 +174,28 @@ describe('validateInstrumentProfile', () => {
   });
 });
 
+describe('category（乐器分类）', () => {
+  it('缺省时默认为 custom', () => {
+    const result = validateInstrumentProfile(pitchedProfile());
+    expect(result.ok).toBe(true);
+    if (result.ok) expect(result.value.category).toBe('custom');
+  });
+
+  it('接受合法分类', () => {
+    for (const category of ['lyre', 'drum', 'horn', 'vocal', 'custom']) {
+      const result = validateInstrumentProfile({ ...pitchedProfile(), category });
+      expect(result.ok).toBe(true);
+      if (result.ok) expect(result.value.category).toBe(category);
+    }
+  });
+
+  it('非法分类报错', () => {
+    expect(errorsOf({ ...pitchedProfile(), category: 'brass' })).toContain(
+      'category：分类必须是 lyre（琴类）、drum（鼓类）、horn（圆号）、vocal（人声）或 custom（自定义）之一',
+    );
+  });
+});
+
 describe('和弦键校验（M6）', () => {
   it('合法和弦键通过，与单音键混合', () => {
     const profile = pitchedProfile();

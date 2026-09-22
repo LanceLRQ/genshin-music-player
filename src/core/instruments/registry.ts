@@ -11,6 +11,7 @@ import vintageLyre from '../../../shared/instruments/vintage-lyre.json';
 import windsongLyre from '../../../shared/instruments/windsong-lyre.json';
 import yucoLyre from '../../../shared/instruments/yuco-lyre.json';
 import { InstrumentProfileSchema, type InstrumentProfile } from '../model/instrument';
+import type { AdaptOptions } from '../model/timeline';
 
 /** 模块加载时即做 schema 校验：内置配置写错会直接抛错，由测试兜底 */
 export const BUILTIN_INSTRUMENTS: readonly InstrumentProfile[] = [
@@ -62,4 +63,22 @@ export function mergeInstruments(custom: readonly InstrumentProfile[]): {
 
 export function findInstrument(entries: readonly InstrumentEntry[], id: string): InstrumentProfile | undefined {
   return entries.find((entry) => entry.profile.id === id)?.profile;
+}
+
+/** 是否支持「按 MIDI 音长按键」与「按住时长」调整：自定义乐器，或分类为圆号 / 人声的内置乐器 */
+export function supportsHoldControl(entry: { profile: InstrumentProfile; builtin: boolean }): boolean {
+  return !entry.builtin || entry.profile.category === 'horn' || entry.profile.category === 'vocal';
+}
+
+/** 剥离当前乐器不支持的按住控制参数，避免不合规的乐器意外应用 useNoteDuration / holdMsOverride */
+export function stripHoldControlOptions(
+  options: AdaptOptions,
+  entry: { profile: InstrumentProfile; builtin: boolean },
+): AdaptOptions {
+  if (supportsHoldControl(entry)) return options;
+  if (options.useNoteDuration === undefined && options.holdMsOverride === undefined) return options;
+  const rest = { ...options };
+  delete rest.useNoteDuration;
+  delete rest.holdMsOverride;
+  return rest;
 }

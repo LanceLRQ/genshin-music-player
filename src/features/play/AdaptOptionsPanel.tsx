@@ -1,4 +1,4 @@
-import { ChevronRight, Minus, Plus } from 'lucide-react';
+import { ChevronRight, Minus, Plus, RotateCcw } from 'lucide-react';
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { ButtonGroup } from '@/components/ui/button-group';
@@ -9,6 +9,7 @@ import { Slider } from '@/components/ui/slider';
 import { Switch } from '@/components/ui/switch';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { drumNoteLabel, buildVoiceKeyGroups } from '@/core/adapter/percussionMap';
+import { supportsHoldControl } from '@/core/instruments/registry';
 import { midiToNoteName, noteNameToMidi } from '@/core/music/pitch';
 import { voiceLabel } from '@/core/model/instrument';
 import type { InstrumentProfile } from '@/core/model/instrument';
@@ -16,6 +17,10 @@ import { keyLabel } from '@/core/model/keycodes';
 import type { AdaptOptions } from '@/core/model/timeline';
 import { formatSigned } from '@/lib/format';
 import { cn } from '@/lib/utils';
+
+/** 固定按住时长的可选范围：上限约为 60 BPM 下一个全音符 */
+const HOLD_MS_MIN = 10;
+const HOLD_MS_MAX = 4000;
 
 /** 关闭「自动」时分界音高的默认值（C4） */
 const MANUAL_SPLIT_PITCH = 60;
@@ -25,10 +30,90 @@ const ALL_PITCHES = Array.from({ length: 128 }, (_, pitch) => pitch);
 
 interface AdaptOptionsPanelProps {
   profile: InstrumentProfile;
+  /** 当前乐器是否内置（决定「按音长按键」「按住时长」是否显示，见 supportsHoldControl） */
+  builtin: boolean;
   options: AdaptOptions;
   locked: boolean;
   /** 手动修改参数（页面写回 adaptStore 并标记 manual） */
   onChange: (options: AdaptOptions) => void;
+}
+
+interface HoldControlRowProps {
+  profile: InstrumentProfile;
+  options: AdaptOptions;
+  locked: boolean;
+  onChange: (options: AdaptOptions) => void;
+}
+
+/**
+ * 「按 MIDI 音长按键」与「按住时长」：只有支持按住控制的乐器才会渲染（见 supportsHoldControl）。
+ * 开关未手动设置时跟随乐器的 sustain；开启时按音长按住，关闭时每个音按固定的按住时长按住
+ */
+function HoldControlRow({ profile, options, locked, onChange }: HoldControlRowProps) {
+  const [draft, setDraft] = useState<string | null>(null);
+  const useNoteDuration = options.useNoteDuration ?? profile.timing.sustain;
+  const holdMs = options.holdMsOverride ?? profile.timing.holdMs;
+  const setHoldMs = (next: number) => onChange({ ...options, holdMsOverride: Math.min(Math.max(next, HOLD_MS_MIN), HOLD_MS_MAX) });
+  return (
+    <>
+      <div className="flex items-center gap-3">
+        <span className="w-14 shrink-0 text-sm">音长按键</span>
+        <Switch
+          aria-label="按 MIDI 音长按键"
+          checked={useNoteDuration}
+          disabled={locked}
+          onCheckedChange={(checked) => onChange({ ...options, useNoteDuration: checked })}
+        />
+        <span className="text-xs text-muted-foreground">{useNoteDuration ? '按 MIDI 音长按住' : '按固定时长按住'}</span>
+      </div>
+      {!useNoteDuration && (
+        <div className="flex flex-wrap items-center gap-3">
+          <span className="w-14 shrink-0 text-sm">按住时长</span>
+          <Slider
+            className="min-w-32 flex-1"
+            min={HOLD_MS_MIN}
+            max={HOLD_MS_MAX}
+            step={10}
+            value={[holdMs]}
+            disabled={locked}
+            onValueChange={([next]) => setHoldMs(next)}
+          />
+          <Input
+            aria-label="按住时长（毫秒）"
+            type="number"
+            className="w-20 bg-background text-right tabular-nums"
+            min={HOLD_MS_MIN}
+            max={HOLD_MS_MAX}
+            value={draft ?? String(holdMs)}
+            disabled={locked}
+            onChange={(event) => setDraft(event.target.value)}
+            onBlur={() => {
+              if (draft === null) return;
+              const parsed = Number.parseInt(draft, 10);
+              setDraft(null);
+              if (!Number.isNaN(parsed)) setHoldMs(parsed);
+            }}
+            onKeyDown={(event) => {
+              if (event.key === 'Enter') event.currentTarget.blur();
+            }}
+          />
+          <span className="text-xs text-muted-foreground">ms</span>
+          {options.holdMsOverride !== undefined && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-7 gap-1 px-2 text-xs"
+              disabled={locked}
+              onClick={() => onChange({ ...options, holdMsOverride: undefined })}
+            >
+              <RotateCcw className="size-3.5" />
+              跟随乐器（{profile.timing.holdMs}ms）
+            </Button>
+          )}
+        </div>
+      )}
+    </>
+  );
 }
 
 interface StepperProps {
@@ -194,9 +279,10 @@ function DrumVoiceNoteRow({ label, keyHint, pitch, taken, locked, onPick }: Drum
 }
 
 /** 适配参数内容片段（设计 01 第 4.5 节）：由演奏参数卡承载卡片样式，音高类与敲击类显示不同的参数集合 */
-export function AdaptOptionsPanel({ profile, options, locked, onChange }: AdaptOptionsPanelProps) {
+export function AdaptOptionsPanel({ profile, builtin, options, locked, onChange }: AdaptOptionsPanelProps) {
   const [advancedOpen, setAdvancedOpen] = useState(false);
   const autoSplitFromProps = options.percussionSplitPitch === undefined;
+  const holdControlEligible = supportsHoldControl({ profile, builtin });
   // 对称备用键（-2）与主键是同一声音：按 baseVoice 分组，一行一个下拉，改一处即整组联动
   const drumVoiceGroups = profile.kind === 'percussion' ? [...buildVoiceKeyGroups(profile)] : [];
   const setDrumVoiceNote = (voice: string, pitch: number | undefined) => {
@@ -292,6 +378,7 @@ export function AdaptOptionsPanel({ profile, options, locked, onChange }: AdaptO
           </p>
         </>
       )}
+      {holdControlEligible && <HoldControlRow profile={profile} options={options} locked={locked} onChange={onChange} />}
       <Collapsible open={advancedOpen} onOpenChange={setAdvancedOpen}>
         <CollapsibleTrigger asChild>
           <Button variant="ghost" size="sm" className="w-fit gap-1 px-2 text-muted-foreground">

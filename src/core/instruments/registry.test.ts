@@ -1,6 +1,14 @@
 import { describe, expect, it } from 'vitest';
 import type { InstrumentProfile } from '../model/instrument';
-import { BUILTIN_INSTRUMENTS, findInstrument, isBuiltinInstrumentId, mergeInstruments } from './registry';
+import type { AdaptOptions } from '../model/timeline';
+import {
+  BUILTIN_INSTRUMENTS,
+  findInstrument,
+  isBuiltinInstrumentId,
+  mergeInstruments,
+  stripHoldControlOptions,
+  supportsHoldControl,
+} from './registry';
 
 const builtin = (id: string) => BUILTIN_INSTRUMENTS.find((p) => p.id === id)!;
 const pitchesOf = (profile: InstrumentProfile) => profile.rows.flatMap((row) => row.keys.map((key) => key.pitch as number));
@@ -185,5 +193,51 @@ describe('mergeInstruments', () => {
     expect(findInstrument(entries, 'nope')).toBeUndefined();
     expect(isBuiltinInstrumentId('festive-drum')).toBe(true);
     expect(isBuiltinInstrumentId('my-lyre')).toBe(false);
+  });
+});
+
+describe('supportsHoldControl', () => {
+  it('自定义乐器始终支持，不论分类', () => {
+    expect(supportsHoldControl({ profile: builtin('windsong-lyre'), builtin: false })).toBe(true);
+    expect(supportsHoldControl({ profile: builtin('evening-horn'), builtin: false })).toBe(true);
+  });
+
+  it('内置圆号 / 人声乐器支持，其余内置乐器不支持', () => {
+    expect(supportsHoldControl({ profile: builtin('evening-horn'), builtin: true })).toBe(true);
+    expect(supportsHoldControl({ profile: builtin('two-row-prototype'), builtin: true })).toBe(true);
+    expect(supportsHoldControl({ profile: builtin('windsong-lyre'), builtin: true })).toBe(false);
+    expect(supportsHoldControl({ profile: builtin('festive-drum'), builtin: true })).toBe(false);
+  });
+});
+
+describe('stripHoldControlOptions', () => {
+  const baseOptions: AdaptOptions = {
+    tracks: ['t0'],
+    transpose: 0,
+    octaveShift: 0,
+    blackKeyPolicy: 'skip',
+    outOfRangePolicy: 'fold',
+    maxPolyphony: 3,
+    chordWindowMs: 15,
+    useNoteDuration: true,
+    holdMsOverride: 80,
+  };
+
+  it('不支持按住控制的乐器：剥离 useNoteDuration 与 holdMsOverride', () => {
+    const stripped = stripHoldControlOptions(baseOptions, { profile: builtin('windsong-lyre'), builtin: true });
+    expect(stripped.useNoteDuration).toBeUndefined();
+    expect(stripped.holdMsOverride).toBeUndefined();
+    expect(stripped).not.toBe(baseOptions);
+  });
+
+  it('支持按住控制的乐器：原样返回（同一引用）', () => {
+    const entry = { profile: builtin('evening-horn'), builtin: true };
+    expect(stripHoldControlOptions(baseOptions, entry)).toBe(baseOptions);
+  });
+
+  it('不支持按住控制但本来就没有这两项时，原样返回（同一引用）', () => {
+    const clean: AdaptOptions = { ...baseOptions, useNoteDuration: undefined, holdMsOverride: undefined };
+    const entry = { profile: builtin('windsong-lyre'), builtin: true };
+    expect(stripHoldControlOptions(clean, entry)).toBe(clean);
   });
 });

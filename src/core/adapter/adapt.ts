@@ -45,7 +45,7 @@ export function adapt(score: Score, profile: InstrumentProfile, options: AdaptOp
       ? collectPitched(tracks, profile, options, report)
       : collectPercussion(tracks, profile, options, report);
   const presses = buildPresses(candidates, profile, options, report);
-  const durationMs = presses.reduce((max, press) => Math.max(max, press.tMs + press.holdMs), 0);
+  const durationMs = presses.reduce((max, press) => Math.max(max, press.tMs + Math.max(press.holdMs, press.sustainMs ?? 0)), 0);
   return {
     timeline: { instrumentId: profile.id, durationMs, minRepeatGapMs: profile.timing.minRepeatGapMs, presses },
     report,
@@ -188,6 +188,9 @@ function buildPresses(
     .filter((key) => key.chord !== undefined)
     .map((key) => ({ code: key.code, pcs: new Set(key.chord!.map((p) => p % 12)) }));
   const chordEnabled = chordKeys.length > 0 && options.useChordKeys !== false;
+  // 未指定时按乐器配置决定是否按音长；按音长时乐器 holdMs 只作最短按住兜底，holdMsOverride 只用于固定时长模式
+  const sustain = options.useNoteDuration ?? profile.timing.sustain;
+  const baseHold = sustain ? profile.timing.holdMs : (options.holdMsOverride ?? profile.timing.holdMs);
   const sorted = [...candidates].sort((a, b) => a.startMs - b.startMs || b.order - a.order);
   const lastPressAt = new Map<string, number>();
   const presses: Press[] = [];
@@ -216,7 +219,7 @@ function buildPresses(
             report.merged += group.length - 1;
             report.chordHits += 1;
             lastPressAt.set(chordCode, groupStart);
-            presses.push({ tMs: groupStart, codes: [chordCode], holdMs: profile.timing.holdMs });
+            presses.push({ tMs: groupStart, codes: [chordCode], holdMs: baseHold });
             continue;
           }
         }
@@ -256,7 +259,8 @@ function buildPresses(
     presses.push({
       tMs: groupStart,
       codes: kept.map((candidate) => candidate.code),
-      holdMs: profile.timing.sustain ? Math.max(profile.timing.holdMs, longest) : profile.timing.holdMs,
+      holdMs: baseHold,
+      ...(sustain && longest > baseHold ? { sustainMs: longest } : {}),
     });
   }
   return presses;

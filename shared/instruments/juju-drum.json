@@ -3,6 +3,7 @@
   "id": "juju-drum",
   "name": "聚聚鼓",
   "kind": "percussion",
+  "category": "drum",
   "status": "verified",
   "rows": [
     {

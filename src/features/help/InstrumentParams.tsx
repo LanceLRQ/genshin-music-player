@@ -1,7 +1,7 @@
 import { Fragment, useState, type ReactNode } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { type InstrumentProfile, voiceLabel } from '@/core/model/instrument';
+import { INSTRUMENT_CATEGORY_LABELS, type InstrumentProfile, voiceLabel } from '@/core/model/instrument';
 import { keyLabel } from '@/core/model/keycodes';
 import { midiToNoteName } from '@/core/music/pitch';
 import { useInstrumentStore } from '@/stores/instrumentStore';
@@ -41,6 +41,7 @@ function OverviewRows({ profile }: { profile: InstrumentProfile }) {
   const push = (label: string, value: ReactNode) => rows.push([label, value]);
 
   push('类型', <>{profile.kind === 'pitched' ? '音高类' : '敲击类'}</>);
+  push('分类', <>{INSTRUMENT_CATEGORY_LABELS[profile.category]}</>);
   push(
     '状态',
     profile.status === 'verified' ? (

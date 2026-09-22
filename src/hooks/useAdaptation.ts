@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
 import { adapt, hitRate } from '@/core/adapter/adapt';
+import { stripHoldControlOptions } from '@/core/instruments/registry';
 import type { AdaptReport, KeyTimeline } from '@/core/model/timeline';
 import { useDebouncedValue } from '@/hooks/useDebouncedValue';
 import { useAdaptStore } from '@/stores/adaptStore';
@@ -21,13 +22,14 @@ export function useAdaptation(): Adaptation {
   const targetId = useAdaptStore((state) => state.targetId);
   const options = useAdaptStore((state) => state.options);
   const useChordKeys = useSettingsStore((state) => state.settings?.useChordKeys ?? true);
-  const profile = useInstrumentStore((state) => state.entries.find((entry) => entry.profile.id === targetId)?.profile);
+  const entry = useInstrumentStore((state) => state.entries.find((entry) => entry.profile.id === targetId));
   const debouncedScore = useDebouncedValue(score, 100);
   const debouncedOptions = useDebouncedValue(options, 100);
 
   return useMemo(() => {
-    if (!debouncedScore || !debouncedOptions || !profile) return { timeline: null, report: null, rates: {} };
-    const withChordSwitch = { ...debouncedOptions, useChordKeys };
+    if (!debouncedScore || !debouncedOptions || !entry) return { timeline: null, report: null, rates: {} };
+    const profile = entry.profile;
+    const withChordSwitch = { ...stripHoldControlOptions(debouncedOptions, entry), useChordKeys };
     const { timeline, report } = adapt(debouncedScore, profile, withChordSwitch);
     const rates: Record<string, number | null> = {};
     for (const track of debouncedScore.tracks) {
@@ -35,5 +37,5 @@ export function useAdaptation(): Adaptation {
       rates[track.id] = single.report.total > 0 ? hitRate(single.report) : null;
     }
     return { timeline, report, rates };
-  }, [debouncedScore, debouncedOptions, profile, useChordKeys]);
+  }, [debouncedScore, debouncedOptions, entry, useChordKeys]);
 }

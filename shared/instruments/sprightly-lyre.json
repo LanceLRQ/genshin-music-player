@@ -3,6 +3,7 @@
   "id": "sprightly-lyre",
   "name": "跃律琴",
   "kind": "pitched",
+  "category": "lyre",
   "status": "verified",
   "rows": [
     {

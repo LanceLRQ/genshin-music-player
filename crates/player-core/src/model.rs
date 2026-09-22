@@ -10,6 +10,9 @@ pub struct Press {
     pub t_ms: f64,
     pub codes: Vec<String>,
     pub hold_ms: f64,
+    /// 需要按音长按住时的目标音长（未经变速）；前端只在音长大于 holdMs 时才会设置
+    #[serde(default)]
+    pub sustain_ms: Option<f64>,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]

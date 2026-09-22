@@ -81,6 +81,7 @@ fn press(t_ms: f64, codes: Vec<String>, options: PatternOptions) -> Press {
         t_ms,
         codes,
         hold_ms: options.hold_ms,
+        sustain_ms: None,
     }
 }
 
