@@ -7,6 +7,7 @@ import { AppError, type EnvInfo } from '@/ipc/types';
 import { useEnvStore } from '@/stores/envStore';
 import { useNavigationStore } from '@/stores/navigationStore';
 import { useSettingsStore } from '@/stores/settingsStore';
+import { useThemeStore } from '@/stores/themeStore';
 import { useTransportStore } from '@/stores/transportStore';
 import { AppSidebar } from './app-sidebar';
 
@@ -37,6 +38,7 @@ beforeEach(() => {
   useSettingsStore.setState(useSettingsStore.getInitialState(), true);
   useNavigationStore.setState(useNavigationStore.getInitialState(), true);
   useTransportStore.setState(useTransportStore.getInitialState(), true);
+  useThemeStore.setState(useThemeStore.getInitialState(), true);
 });
 
 describe('AppSidebar', () => {
@@ -84,6 +86,26 @@ describe('AppSidebar', () => {
     renderSidebar();
     expect(screen.queryByText('开始/暂停')).not.toBeInTheDocument();
     expect(screen.queryByText('停止')).not.toBeInTheDocument();
+  });
+
+  it('主题按钮按 跟随系统 → 浅色 → 深色 → 跟随系统 循环切换文案', async () => {
+    const { user } = renderSidebar();
+    expect(screen.getByRole('button', { name: '主题：跟随系统' })).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: '主题：跟随系统' }));
+    expect(useThemeStore.getState().mode).toBe('light');
+    expect(screen.getByRole('button', { name: '主题：浅色' })).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: '主题：浅色' }));
+    expect(useThemeStore.getState().mode).toBe('dark');
+    expect(screen.getByRole('button', { name: '主题：深色' })).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: '主题：深色' }));
+    expect(useThemeStore.getState().mode).toBe('system');
+    expect(screen.getByRole('button', { name: '主题：跟随系统' })).toBeInTheDocument();
+  });
+
+  it('侧边栏收起为图标模式时，主题按钮仍渲染', async () => {
+    const { user } = renderSidebar();
+    await user.click(screen.getByRole('button', { name: '展开或收起侧边栏' }));
+    expect(screen.getByRole('button', { name: '主题：跟随系统' })).toBeInTheDocument();
   });
 
   it('演奏进行中且不在演奏页时，"演奏"入口显示状态点', () => {

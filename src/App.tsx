@@ -10,11 +10,12 @@ import { PlayPage } from '@/features/play/PlayPage';
 import { SettingsPage } from '@/features/settings/SettingsPage';
 import { usePlayerEvents } from '@/hooks/usePlayerEvents';
 import { useSoundModeHotkeys } from '@/hooks/useSoundModeHotkeys';
-import { watchSystemTheme } from '@/lib/theme';
+import { applyTheme } from '@/lib/theme';
 import { useEnvStore } from '@/stores/envStore';
 import { useInstrumentStore } from '@/stores/instrumentStore';
 import { type PageId, useNavigationStore } from '@/stores/navigationStore';
 import { useSettingsStore } from '@/stores/settingsStore';
+import { useThemeStore } from '@/stores/themeStore';
 
 function CurrentPage({ page }: { page: PageId }) {
   switch (page) {
@@ -31,6 +32,7 @@ function CurrentPage({ page }: { page: PageId }) {
 
 export function App() {
   const page = useNavigationStore((state) => state.page);
+  const themeMode = useThemeStore((state) => state.mode);
   usePlayerEvents();
   useSoundModeHotkeys();
 
@@ -40,7 +42,7 @@ export function App() {
     void useInstrumentStore.getState().load();
   }, []);
 
-  useEffect(() => watchSystemTheme(), []);
+  useEffect(() => applyTheme(themeMode), [themeMode]);
 
   return (
     <>
