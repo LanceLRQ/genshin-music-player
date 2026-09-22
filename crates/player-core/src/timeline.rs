@@ -1,4 +1,6 @@
-//! KeyTimeline 校验与执行时间线生成（纯函数）。
+//! KeyTimeline 校验与执行时间线生成（纯函数）。长音模式下同键相邻两次按下的
+//! 提前松开量由 `KeyTimeline.release_gap_ms` 控制（未设置时退化为 1ms），
+//! 循环回卷衔接处同样适用，详见 `resolve_conflicts` / `resolve_loop_wrap`。
 
 use std::collections::{BTreeMap, HashMap, HashSet};
 
@@ -61,6 +63,11 @@ pub fn validate_timeline(timeline: &KeyTimeline) -> Result<(), CoreError> {
             }
         }
     }
+    if let Some(release_gap_ms) = timeline.release_gap_ms
+        && !(release_gap_ms.is_finite() && release_gap_ms >= 0.0)
+    {
+        return Err(CoreError::timeline_invalid("松开间隔必须大于等于 0"));
+    }
     Ok(())
 }
 
@@ -93,16 +100,28 @@ pub fn build_execution(
     let mut presses = slice_and_scale(timeline, params);
     apply_humanize(&mut presses, params);
     presses.sort_by(|a, b| a.t_ms.total_cmp(&b.t_ms));
-    let (mut notes, mut dropped) = resolve_conflicts(&presses, timeline.min_repeat_gap_ms);
+    let (mut notes, mut dropped) = resolve_conflicts(
+        &presses,
+        timeline.min_repeat_gap_ms,
+        timeline.release_gap_ms,
+    );
+    // 循环周期在回卷截短之前就固定下来：回卷会截短部分音符的松开时间，如果截短后
+    // 从事件重新算周期，会把回卷时刚补出来的松开间隔又吃回去（截短用的 period_ms
+    // 变小，松开时间又被下一次按下追上）。duration_ms 只算这一次，events 单独用
+    // 截短后的 notes 重新生成（必须重新算，反映截短后的真实 up 时间）
+    let duration_ms = execution_duration_ms(&to_events(&notes), params);
     // 循环回卷衔接的过密检查放在轮内冲突解决之后：轮内过滤看不到「下一轮」，
     // 回卷衔接是唯一绕过 min_repeat_gap 的路径（M2 遗留 7.7）。周期取调度器将采用
     // 的循环周期（durationMs，含区间尾部休止，已是执行时间线时间），只在 looped 生效
     if params.range.looped && !notes.is_empty() {
-        let period_ms = execution_duration_ms(&to_events(&notes), params);
-        dropped += resolve_loop_wrap(&mut notes, period_ms, timeline.min_repeat_gap_ms);
+        dropped += resolve_loop_wrap(
+            &mut notes,
+            duration_ms,
+            timeline.min_repeat_gap_ms,
+            timeline.release_gap_ms,
+        );
     }
     let events = to_events(&notes);
-    let duration_ms = execution_duration_ms(&events, params);
 
     Ok(ExecutionTimeline {
         instrument_id: timeline.instrument_id.clone(),
@@ -119,12 +138,15 @@ struct ScheduledPress<'a> {
     t_ms: f64,
     codes: &'a [String],
     hold_ms: f64,
+    /// 提前松开时不能短于的下限：press 原始的 hold_ms，不随 sustain 放大、也不随速度缩放
+    min_hold_ms: f64,
 }
 
 struct KeyNote<'a> {
     code: &'a str,
     down_ms: f64,
     up_ms: f64,
+    min_hold_ms: f64,
 }
 
 fn slice_and_scale<'a>(
@@ -145,6 +167,7 @@ fn slice_and_scale<'a>(
                 Some(sustain_ms) => press.hold_ms.max(sustain_ms / params.speed),
                 None => press.hold_ms,
             },
+            min_hold_ms: press.hold_ms,
         })
         .collect()
 }
@@ -165,6 +188,7 @@ fn apply_humanize(presses: &mut [ScheduledPress<'_>], params: &ExecutionParams) 
 fn resolve_conflicts<'a>(
     presses: &[ScheduledPress<'a>],
     min_repeat_gap_ms: f64,
+    release_gap_ms: Option<f64>,
 ) -> (Vec<KeyNote<'a>>, u32) {
     let min_gap = min_repeat_gap_ms.max(MIN_REPEAT_GAP_FLOOR_MS);
     let mut notes: Vec<KeyNote<'a>> = Vec::new();
@@ -178,7 +202,14 @@ fn resolve_conflicts<'a>(
                     dropped += 1;
                     continue;
                 }
-                let latest_up = press.t_ms - RELEASE_LEAD_MS;
+                // 提前量默认取 release_gap_ms（长音模式），未设置时退化为旧行为的 1ms；
+                // 但不能把按住时长压缩到原始 hold_ms 以下，也永远不能晚于下一次按下前 1ms
+                let lead = release_gap_ms
+                    .unwrap_or(RELEASE_LEAD_MS)
+                    .max(RELEASE_LEAD_MS);
+                let latest_up = (press.t_ms - lead)
+                    .max(note.down_ms + note.min_hold_ms)
+                    .min(press.t_ms - RELEASE_LEAD_MS);
                 if note.up_ms > latest_up {
                     note.up_ms = latest_up;
                 }
@@ -188,6 +219,7 @@ fn resolve_conflicts<'a>(
                 code,
                 down_ms: press.t_ms,
                 up_ms: press.t_ms + press.hold_ms,
+                min_hold_ms: press.min_hold_ms,
             });
         }
     }
@@ -195,15 +227,18 @@ fn resolve_conflicts<'a>(
 }
 
 /// 循环回卷衔接：把「下一轮开头」视作时间线末尾之后的下一次按下，对每个键
-/// 套用与轮内一致的 min_repeat_gap 约束——回卷间隔 = 循环周期 − 该键末次按下
-/// + 该键下次按下。过密时丢弃下一轮的首按；时间线每一轮共用同一份事件，
-/// 丢弃即从时间线里去掉该键的首按，并计入 dropped。
-/// 不需要为回卷补提前松开：循环周期 ≥ 最后一个事件的时间，末次松开必然
-/// 先于（至多重合于）下一轮同键的按下。
+/// 套用与轮内一致的 min_repeat_gap 约束——回卷间隔等于循环周期减去该键末次
+/// 按下、加上该键下次按下的时刻。过密时丢弃下一轮的首按；时间线每一轮共用
+/// 同一份事件，丢弃即从时间线里去掉该键的首按，并计入 dropped。
+///
+/// 丢弃判断结束后，再对每个键本轮最后一个音符按 release_gap_ms 提前松开
+/// （公式与 resolve_conflicts 一致，下一次按下换成「下一轮开头该键的按下时刻」），
+/// 保证长音模式下回卷衔接处也不会因松开太晚而被游戏漏读。
 fn resolve_loop_wrap<'a>(
     notes: &mut Vec<KeyNote<'a>>,
     period_ms: f64,
     min_repeat_gap_ms: f64,
+    release_gap_ms: Option<f64>,
 ) -> u32 {
     let min_gap = min_repeat_gap_ms.max(MIN_REPEAT_GAP_FLOOR_MS);
     // notes 按按下时间有序：先收集每个键的按下位置，末位即该键本轮末按
@@ -212,14 +247,33 @@ fn resolve_loop_wrap<'a>(
         positions.entry(note.code).or_default().push(index);
     }
     let mut drop_indices: Vec<usize> = Vec::new();
+    // (本轮最后一个音符的下标, 下一轮开头该键按下的绝对时间)；先只读收集，
+    // 避免在同一循环里既读 notes[...] 又对 notes 做可变借用
+    let mut truncations: Vec<(usize, f64)> = Vec::new();
     for note_positions in positions.values() {
-        let last_down = notes[note_positions[note_positions.len() - 1]].down_ms;
+        let last_index = note_positions[note_positions.len() - 1];
+        let last_down = notes[last_index].down_ms;
+        let mut retained_first_down = last_down;
         for &index in note_positions {
             // 首按被丢后，下一次按下成为新的回卷首按，继续检查直到间隔达标
             if period_ms - last_down + notes[index].down_ms >= min_gap {
+                retained_first_down = notes[index].down_ms;
                 break;
             }
             drop_indices.push(index);
+        }
+        truncations.push((last_index, period_ms + retained_first_down));
+    }
+    for (index, next_down) in truncations {
+        let note = &mut notes[index];
+        let lead = release_gap_ms
+            .unwrap_or(RELEASE_LEAD_MS)
+            .max(RELEASE_LEAD_MS);
+        let latest_up = (next_down - lead)
+            .max(note.down_ms + note.min_hold_ms)
+            .min(next_down - RELEASE_LEAD_MS);
+        if note.up_ms > latest_up {
+            note.up_ms = latest_up;
         }
     }
     let dropped = drop_indices.len() as u32;

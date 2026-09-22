@@ -31,5 +31,5 @@
       ]
     }
   ],
-  "timing": { "holdMs": 30, "minRepeatGapMs": 40, "sustain": true }
+  "timing": { "holdMs": 30, "minRepeatGapMs": 40, "sustain": false }
 }

@@ -14,6 +14,7 @@ import { midiToNoteName, noteNameToMidi } from '@/core/music/pitch';
 import { voiceLabel } from '@/core/model/instrument';
 import type { InstrumentProfile } from '@/core/model/instrument';
 import { keyLabel } from '@/core/model/keycodes';
+import { DEFAULT_RELEASE_GAP_MS } from '@/core/model/timeline';
 import type { AdaptOptions } from '@/core/model/timeline';
 import { formatSigned } from '@/lib/format';
 import { cn } from '@/lib/utils';
@@ -21,6 +22,10 @@ import { cn } from '@/lib/utils';
 /** 固定按住时长的可选范围：上限约为 60 BPM 下一个全音符 */
 const HOLD_MS_MIN = 10;
 const HOLD_MS_MAX = 4000;
+
+/** 松开间隔的可选范围（仅长音模式下生效） */
+const RELEASE_GAP_MS_MIN = 0;
+const RELEASE_GAP_MS_MAX = 200;
 
 /** 关闭「自动」时分界音高的默认值（C4） */
 const MANUAL_SPLIT_PITCH = 60;
@@ -45,15 +50,77 @@ interface HoldControlRowProps {
   onChange: (options: AdaptOptions) => void;
 }
 
+interface MsSliderRowProps {
+  /** 行首文字 */
+  label: string;
+  /** 输入框的 aria-label */
+  inputLabel: string;
+  min: number;
+  max: number;
+  step: number;
+  value: number;
+  locked: boolean;
+  /** 滑块拖动或输入框提交后回调；内部已 clamp 到 min–max */
+  onChange: (next: number) => void;
+  /** 存在时渲染复位按钮，取值为按钮文案；不存在则不渲染 */
+  resetLabel?: string;
+  onReset?: () => void;
+}
+
+/** 滑块 + 数字输入框 + 单位 + 可选复位按钮：按住时长与松开间隔共用此结构 */
+function MsSliderRow({ label, inputLabel, min, max, step, value, locked, onChange, resetLabel, onReset }: MsSliderRowProps) {
+  const [draft, setDraft] = useState<string | null>(null);
+  const commit = (next: number) => onChange(Math.min(Math.max(next, min), max));
+  return (
+    <div className="flex flex-wrap items-center gap-3">
+      <span className="w-14 shrink-0 text-sm">{label}</span>
+      <Slider
+        className="min-w-32 flex-1"
+        min={min}
+        max={max}
+        step={step}
+        value={[value]}
+        disabled={locked}
+        onValueChange={([next]) => commit(next)}
+      />
+      <Input
+        aria-label={inputLabel}
+        type="number"
+        className="w-20 bg-background text-right tabular-nums"
+        min={min}
+        max={max}
+        value={draft ?? String(value)}
+        disabled={locked}
+        onChange={(event) => setDraft(event.target.value)}
+        onBlur={() => {
+          if (draft === null) return;
+          const parsed = Number.parseInt(draft, 10);
+          setDraft(null);
+          if (!Number.isNaN(parsed)) commit(parsed);
+        }}
+        onKeyDown={(event) => {
+          if (event.key === 'Enter') event.currentTarget.blur();
+        }}
+      />
+      <span className="text-xs text-muted-foreground">ms</span>
+      {resetLabel !== undefined && (
+        <Button variant="ghost" size="sm" className="h-7 gap-1 px-2 text-xs" disabled={locked} onClick={onReset}>
+          <RotateCcw className="size-3.5" />
+          {resetLabel}
+        </Button>
+      )}
+    </div>
+  );
+}
+
 /**
- * 「按 MIDI 音长按键」与「按住时长」：只有支持按住控制的乐器才会渲染（见 supportsHoldControl）。
- * 开关未手动设置时跟随乐器的 sustain；开启时按音长按住，关闭时每个音按固定的按住时长按住
+ * 「按 MIDI 音长按键」与「按住时长 / 松开间隔」：只有支持按住控制的乐器才会渲染（见 supportsHoldControl）。
+ * 开关未手动设置时跟随乐器的 sustain；开启时按音长按住（可调松开间隔避免同键连按撞车），关闭时每个音按固定的按住时长按住
  */
 function HoldControlRow({ profile, options, locked, onChange }: HoldControlRowProps) {
-  const [draft, setDraft] = useState<string | null>(null);
   const useNoteDuration = options.useNoteDuration ?? profile.timing.sustain;
   const holdMs = options.holdMsOverride ?? profile.timing.holdMs;
-  const setHoldMs = (next: number) => onChange({ ...options, holdMsOverride: Math.min(Math.max(next, HOLD_MS_MIN), HOLD_MS_MAX) });
+  const releaseGapMs = options.releaseGapMs ?? DEFAULT_RELEASE_GAP_MS;
   return (
     <>
       <div className="flex items-center gap-3">
@@ -66,51 +133,37 @@ function HoldControlRow({ profile, options, locked, onChange }: HoldControlRowPr
         />
         <span className="text-xs text-muted-foreground">{useNoteDuration ? '按 MIDI 音长按住' : '按固定时长按住'}</span>
       </div>
-      {!useNoteDuration && (
-        <div className="flex flex-wrap items-center gap-3">
-          <span className="w-14 shrink-0 text-sm">按住时长</span>
-          <Slider
-            className="min-w-32 flex-1"
-            min={HOLD_MS_MIN}
-            max={HOLD_MS_MAX}
-            step={10}
-            value={[holdMs]}
-            disabled={locked}
-            onValueChange={([next]) => setHoldMs(next)}
+      {useNoteDuration ? (
+        <>
+          <MsSliderRow
+            key="release-gap"
+            label="松开间隔"
+            inputLabel="松开间隔（毫秒）"
+            min={RELEASE_GAP_MS_MIN}
+            max={RELEASE_GAP_MS_MAX}
+            step={5}
+            value={releaseGapMs}
+            locked={locked}
+            onChange={(next) => onChange({ ...options, releaseGapMs: next })}
+            resetLabel={options.releaseGapMs !== undefined ? `默认（${DEFAULT_RELEASE_GAP_MS}ms）` : undefined}
+            onReset={() => onChange({ ...options, releaseGapMs: undefined })}
           />
-          <Input
-            aria-label="按住时长（毫秒）"
-            type="number"
-            className="w-20 bg-background text-right tabular-nums"
-            min={HOLD_MS_MIN}
-            max={HOLD_MS_MAX}
-            value={draft ?? String(holdMs)}
-            disabled={locked}
-            onChange={(event) => setDraft(event.target.value)}
-            onBlur={() => {
-              if (draft === null) return;
-              const parsed = Number.parseInt(draft, 10);
-              setDraft(null);
-              if (!Number.isNaN(parsed)) setHoldMs(parsed);
-            }}
-            onKeyDown={(event) => {
-              if (event.key === 'Enter') event.currentTarget.blur();
-            }}
-          />
-          <span className="text-xs text-muted-foreground">ms</span>
-          {options.holdMsOverride !== undefined && (
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-7 gap-1 px-2 text-xs"
-              disabled={locked}
-              onClick={() => onChange({ ...options, holdMsOverride: undefined })}
-            >
-              <RotateCcw className="size-3.5" />
-              跟随乐器（{profile.timing.holdMs}ms）
-            </Button>
-          )}
-        </div>
+          <p className="text-xs text-muted-foreground">长音在同键再次按下前提前松开，避免游戏漏掉下一个音</p>
+        </>
+      ) : (
+        <MsSliderRow
+          key="hold-ms"
+          label="按住时长"
+          inputLabel="按住时长（毫秒）"
+          min={HOLD_MS_MIN}
+          max={HOLD_MS_MAX}
+          step={10}
+          value={holdMs}
+          locked={locked}
+          onChange={(next) => onChange({ ...options, holdMsOverride: next })}
+          resetLabel={options.holdMsOverride !== undefined ? `跟随乐器（${profile.timing.holdMs}ms）` : undefined}
+          onReset={() => onChange({ ...options, holdMsOverride: undefined })}
+        />
       )}
     </>
   );

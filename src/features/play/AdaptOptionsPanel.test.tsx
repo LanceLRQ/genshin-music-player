@@ -150,6 +150,8 @@ describe('AdaptOptionsPanel（按住控制资格）', () => {
     expect(toggle).toBeChecked();
     expect(toggle).toBeEnabled();
     expect(screen.queryByText('按住时长')).not.toBeInTheDocument();
+    expect(screen.getByText('松开间隔')).toBeInTheDocument();
+    expect(screen.getByRole('spinbutton', { name: '松开间隔（毫秒）' })).toHaveValue(40);
     await user.click(toggle);
     expect(props.onChange).toHaveBeenLastCalledWith(expect.objectContaining({ useNoteDuration: false }));
   });
@@ -158,6 +160,7 @@ describe('AdaptOptionsPanel（按住控制资格）', () => {
     renderPanel({ profile: horn, builtin: true, options: { ...options, useNoteDuration: false } });
     expect(screen.getByRole('switch', { name: '按 MIDI 音长按键' })).not.toBeChecked();
     expect(screen.getByText('按住时长')).toBeInTheDocument();
+    expect(screen.queryByText('松开间隔')).not.toBeInTheDocument();
   });
 
   it('按住时长输入框提交时限制在 10–4000ms', async () => {
@@ -202,6 +205,35 @@ describe('AdaptOptionsPanel（按住控制资格）', () => {
     const resetButton = screen.getByRole('button', { name: /跟随乐器/ });
     await user.click(resetButton);
     expect(props.onChange).toHaveBeenLastCalledWith(expect.objectContaining({ holdMsOverride: undefined }));
+  });
+
+  it('松开间隔输入框提交时限制在 0–200ms', async () => {
+    const props = renderPanel({ profile: horn, builtin: true, options: { ...options } });
+    const user = userEvent.setup();
+    const input = screen.getByRole('spinbutton', { name: '松开间隔（毫秒）' });
+    await user.clear(input);
+    await user.type(input, '300');
+    await user.tab();
+    expect(props.onChange).toHaveBeenLastCalledWith(expect.objectContaining({ releaseGapMs: 200 }));
+    await user.clear(input);
+    await user.type(input, '80');
+    await user.tab();
+    expect(props.onChange).toHaveBeenLastCalledWith(expect.objectContaining({ releaseGapMs: 80 }));
+  });
+
+  it('已覆盖松开间隔时显示默认按钮，点击清除覆盖', async () => {
+    const props = renderPanel({ profile: horn, builtin: true, options: { ...options, releaseGapMs: 80 } });
+    const user = userEvent.setup();
+    const resetButton = screen.getByRole('button', { name: /默认/ });
+    await user.click(resetButton);
+    expect(props.onChange).toHaveBeenLastCalledWith(expect.objectContaining({ releaseGapMs: undefined }));
+  });
+
+  it('locked 时松开间隔滑块与输入框禁用', () => {
+    renderPanel({ profile: horn, builtin: true, locked: true, options: { ...options, releaseGapMs: 80 } });
+    expect(screen.getByRole('slider')).toHaveAttribute('data-disabled');
+    expect(screen.getByRole('spinbutton', { name: '松开间隔（毫秒）' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: /默认/ })).toBeDisabled();
   });
 
   it('locked 时按住控制全部禁用：音长开关、按住时长滑块与输入框、跟随乐器按钮', () => {

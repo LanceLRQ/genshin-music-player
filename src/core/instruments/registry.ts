@@ -99,15 +99,16 @@ export function supportsHoldControl(entry: { profile: InstrumentProfile; builtin
   return !entry.builtin || entry.profile.category === 'horn' || entry.profile.category === 'vocal';
 }
 
-/** 剥离当前乐器不支持的按住控制参数，避免不合规的乐器意外应用 useNoteDuration / holdMsOverride */
+/** 剥离当前乐器不支持的按住控制参数，避免不合规的乐器意外应用 useNoteDuration / holdMsOverride / releaseGapMs */
 export function stripHoldControlOptions(
   options: AdaptOptions,
   entry: { profile: InstrumentProfile; builtin: boolean },
 ): AdaptOptions {
   if (supportsHoldControl(entry)) return options;
-  if (options.useNoteDuration === undefined && options.holdMsOverride === undefined) return options;
+  if (options.useNoteDuration === undefined && options.holdMsOverride === undefined && options.releaseGapMs === undefined) return options;
   const rest = { ...options };
   delete rest.useNoteDuration;
   delete rest.holdMsOverride;
+  delete rest.releaseGapMs;
   return rest;
 }

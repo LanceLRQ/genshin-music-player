@@ -144,14 +144,14 @@ describe('内置乐器', () => {
 });
 
 describe('内置乐器的 timing.sustain', () => {
-  it('晚风圆号、沃雅妮莎（游戏里按住持续发声）timing.sustain 为 true，其余内置乐器为 false', () => {
+  it('晚风圆号（游戏里按住持续发声）timing.sustain 为 true，其余内置乐器为 false（沃雅妮莎尾音本来就长，默认不开长音模式）', () => {
     for (const profile of BUILTIN_INSTRUMENTS) {
-      const expectSustain = profile.id === 'evening-horn' || profile.id === 'two-row-prototype';
+      const expectSustain = profile.id === 'evening-horn';
       expect(profile.timing.sustain, profile.id).toBe(expectSustain);
     }
   });
 
-  it('默认 options（不设 useNoteDuration）演奏晚风圆号 / 沃雅妮莎：跟随乐器 sustain，音长超过 holdMs 的音带 sustainMs', () => {
+  it('默认 options（不设 useNoteDuration）演奏晚风圆号：跟随乐器 sustain，音长超过 holdMs 的音带 sustainMs', () => {
     const defaultOptions: AdaptOptions = {
       tracks: ['t0'],
       transpose: 0,
@@ -161,19 +161,64 @@ describe('内置乐器的 timing.sustain', () => {
       maxPolyphony: 3,
       chordWindowMs: 15,
     };
-    for (const id of ['evening-horn', 'two-row-prototype']) {
-      const profile = builtin(id);
-      const pitch = profile.rows[0].keys[0].pitch!;
-      const longNoteMs = profile.timing.holdMs + 200;
-      const score: Score = {
-        meta: { title: '测试', source: 'json' },
-        tracks: [{ id: 't0', name: 't0', isDrum: false, notes: [{ startMs: 0, durationMs: longNoteMs, pitch, velocity: 0.8 }] }],
-      };
-      const result = adapt(score, profile, defaultOptions);
-      expect(result.timeline.presses).toHaveLength(1);
-      expect(result.timeline.presses[0].holdMs).toBe(profile.timing.holdMs);
-      expect(result.timeline.presses[0].sustainMs, id).toBe(longNoteMs);
-    }
+    const profile = builtin('evening-horn');
+    const pitch = profile.rows[0].keys[0].pitch!;
+    const longNoteMs = profile.timing.holdMs + 200;
+    const score: Score = {
+      meta: { title: '测试', source: 'json' },
+      tracks: [{ id: 't0', name: 't0', isDrum: false, notes: [{ startMs: 0, durationMs: longNoteMs, pitch, velocity: 0.8 }] }],
+    };
+    const result = adapt(score, profile, defaultOptions);
+    expect(result.timeline.presses).toHaveLength(1);
+    expect(result.timeline.presses[0].holdMs).toBe(profile.timing.holdMs);
+    expect(result.timeline.presses[0].sustainMs).toBe(longNoteMs);
+  });
+
+  it('默认 options 演奏沃雅妮莎：跟随乐器 sustain=false，不产生 sustainMs（按固定按住时长）', () => {
+    const defaultOptions: AdaptOptions = {
+      tracks: ['t0'],
+      transpose: 0,
+      octaveShift: 0,
+      blackKeyPolicy: 'skip',
+      outOfRangePolicy: 'fold',
+      maxPolyphony: 3,
+      chordWindowMs: 15,
+    };
+    const profile = builtin('two-row-prototype');
+    const pitch = profile.rows[0].keys[0].pitch!;
+    const longNoteMs = profile.timing.holdMs + 200;
+    const score: Score = {
+      meta: { title: '测试', source: 'json' },
+      tracks: [{ id: 't0', name: 't0', isDrum: false, notes: [{ startMs: 0, durationMs: longNoteMs, pitch, velocity: 0.8 }] }],
+    };
+    const result = adapt(score, profile, defaultOptions);
+    expect(result.timeline.presses).toHaveLength(1);
+    expect(result.timeline.presses[0].holdMs).toBe(profile.timing.holdMs);
+    expect(result.timeline.presses[0].sustainMs).toBeUndefined();
+  });
+
+  it('沃雅妮莎显式打开 useNoteDuration 仍可按音长演奏（用户手动打开）', () => {
+    const openOptions: AdaptOptions = {
+      tracks: ['t0'],
+      transpose: 0,
+      octaveShift: 0,
+      blackKeyPolicy: 'skip',
+      outOfRangePolicy: 'fold',
+      maxPolyphony: 3,
+      chordWindowMs: 15,
+      useNoteDuration: true,
+    };
+    const profile = builtin('two-row-prototype');
+    const pitch = profile.rows[0].keys[0].pitch!;
+    const longNoteMs = profile.timing.holdMs + 200;
+    const score: Score = {
+      meta: { title: '测试', source: 'json' },
+      tracks: [{ id: 't0', name: 't0', isDrum: false, notes: [{ startMs: 0, durationMs: longNoteMs, pitch, velocity: 0.8 }] }],
+    };
+    const result = adapt(score, profile, openOptions);
+    expect(result.timeline.presses).toHaveLength(1);
+    expect(result.timeline.presses[0].holdMs).toBe(profile.timing.holdMs);
+    expect(result.timeline.presses[0].sustainMs).toBe(longNoteMs);
   });
 });
 
@@ -302,12 +347,14 @@ describe('stripHoldControlOptions', () => {
     chordWindowMs: 15,
     useNoteDuration: true,
     holdMsOverride: 80,
+    releaseGapMs: 100,
   };
 
-  it('不支持按住控制的乐器：剥离 useNoteDuration 与 holdMsOverride', () => {
+  it('不支持按住控制的乐器：剥离 useNoteDuration / holdMsOverride / releaseGapMs', () => {
     const stripped = stripHoldControlOptions(baseOptions, { profile: builtin('windsong-lyre'), builtin: true });
     expect(stripped.useNoteDuration).toBeUndefined();
     expect(stripped.holdMsOverride).toBeUndefined();
+    expect(stripped.releaseGapMs).toBeUndefined();
     expect(stripped).not.toBe(baseOptions);
   });
 
@@ -316,8 +363,8 @@ describe('stripHoldControlOptions', () => {
     expect(stripHoldControlOptions(baseOptions, entry)).toBe(baseOptions);
   });
 
-  it('不支持按住控制但本来就没有这两项时，原样返回（同一引用）', () => {
-    const clean: AdaptOptions = { ...baseOptions, useNoteDuration: undefined, holdMsOverride: undefined };
+  it('不支持按住控制但本来就没有这三项时，原样返回（同一引用）', () => {
+    const clean: AdaptOptions = { ...baseOptions, useNoteDuration: undefined, holdMsOverride: undefined, releaseGapMs: undefined };
     const entry = { profile: builtin('windsong-lyre'), builtin: true };
     expect(stripHoldControlOptions(clean, entry)).toBe(clean);
   });

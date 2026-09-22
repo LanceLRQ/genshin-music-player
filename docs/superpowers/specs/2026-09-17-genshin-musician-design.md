@@ -141,6 +141,7 @@ interface KeyTimeline {
   instrumentId: string;
   durationMs: number;
   minRepeatGapMs: number;             // 从乐器配置里带过来，Rust 变速后重新检查
+  releaseGapMs?: number;              // 仅长音模式下设置：同键再次按下前至少提前松开的毫秒数（0–200，默认 40）
   presses: Press[];                   // 按 tMs 升序排列
 }
 interface Press {
@@ -185,7 +186,8 @@ interface ExecutionTimeline {
 3. 人性化：用种子初始化 `ChaCha8Rng`，给每个按键加一个 `[−maxJitterMs, +maxJitterMs]` 内的均匀随机偏移。一个和弦共用同一个偏移。偏移后不能小于 0。
 4. 同键冲突处理：按键按时间重新排序后，检查同一个键的相邻两次按下（最小间隔取 `max(minRepeatGapMs, 2)`，保证松开时间能严格落在两次按下之间）：
    - 间隔小于最小间隔时，丢掉后一次，计入 `dropped`；
-   - 前一次的松开时间晚于"下一次按下 − 1ms"时，把松开时间提前到那个时刻。
+   - 提前量 `lead = max(releaseGapMs ?? 1, 1)`（`KeyTimeline.releaseGapMs` 未设置时退化为原来的 1ms）；前一次的松开时间晚于"下一次按下 − lead"时提前到该时刻，但不早于"前一次按下 + 原始 `holdMs`"（未被 `sustainMs` 放大的值，保证按住时长不会被压缩到下限以下），且始终严格早于下一次按下至少 1ms。
+   - 循环播放时，本轮末尾的按键与下一轮开头的同键按下（回卷衔接）套用同一套提前松开规则；循环周期取回卷截短前确定的时长，避免松开间隔被重新算小的周期吃掉。
 5. 把按键拆成 down/up 事件，时间相同的合并；同一时刻先处理 up 再处理 down。
 
 ## 6. 乐谱解析

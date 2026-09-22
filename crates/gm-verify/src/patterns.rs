@@ -73,6 +73,7 @@ pub fn generate(
         duration_ms,
         min_repeat_gap_ms: options.min_repeat_gap_ms,
         presses,
+        release_gap_ms: None,
     }
 }
 

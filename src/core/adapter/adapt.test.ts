@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { BUILTIN_INSTRUMENTS } from '../instruments/registry';
 import { InstrumentProfileSchema } from '../model/instrument';
 import type { Note, Score, Track } from '../model/score';
-import { type AdaptOptions, type AdaptReport, DEFAULT_ADAPT_OPTIONS } from '../model/timeline';
+import { type AdaptOptions, type AdaptReport, DEFAULT_ADAPT_OPTIONS, DEFAULT_RELEASE_GAP_MS } from '../model/timeline';
 import { adapt, emptyReport, hitRate } from './adapt';
 
 const builtin = (id: string) => BUILTIN_INSTRUMENTS.find((p) => p.id === id)!;
@@ -431,5 +431,18 @@ describe('adapt：按住时长与音长按键', () => {
   it('durationMs 取 tMs + max(holdMs, sustainMs)', () => {
     const result = adapt(scoreOf(track('t0', [note(0, 60, 500)])), lyre, options({ useNoteDuration: true }));
     expect(result.timeline.durationMs).toBe(500);
+  });
+
+  it('长音模式下 timeline.releaseGapMs 默认取 DEFAULT_RELEASE_GAP_MS，显式传入时优先生效', () => {
+    const score = scoreOf(track('t0', [note(0, 60, 500)]));
+    const withDefault = adapt(score, lyre, options({ useNoteDuration: true }));
+    expect(withDefault.timeline.releaseGapMs).toBe(DEFAULT_RELEASE_GAP_MS);
+    const withOverride = adapt(score, lyre, options({ useNoteDuration: true, releaseGapMs: 80 }));
+    expect(withOverride.timeline.releaseGapMs).toBe(80);
+  });
+
+  it('固定时长模式下 timeline 不带 releaseGapMs 这个 key', () => {
+    const result = adapt(scoreOf(track('t0', [note(0, 60, 500)])), lyre, options({ useNoteDuration: false }));
+    expect('releaseGapMs' in result.timeline).toBe(false);
   });
 });

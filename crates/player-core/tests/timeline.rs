@@ -26,6 +26,18 @@ fn timeline(min_repeat_gap_ms: f64, presses: Vec<Press>) -> KeyTimeline {
         duration_ms: 0.0,
         min_repeat_gap_ms,
         presses,
+        release_gap_ms: None,
+    }
+}
+
+fn timeline_with_gap(
+    min_repeat_gap_ms: f64,
+    release_gap_ms: Option<f64>,
+    presses: Vec<Press>,
+) -> KeyTimeline {
+    KeyTimeline {
+        release_gap_ms,
+        ..timeline(min_repeat_gap_ms, presses)
     }
 }
 
@@ -345,6 +357,79 @@ fn speeding_up_can_make_repeats_too_dense() {
     let fast = build(&source, with_speed(2.0));
     assert_eq!(fast.dropped, 1);
     assert_eq!(fast.events.len(), 2);
+}
+
+#[test]
+fn release_gap_extends_lead_time_before_next_press_of_same_key() {
+    // 长音（sustain）撑到 100ms，下一次同键按下在 150ms；release_gap_ms=60 时
+    // 应提前到 150-60=90ms 松开，而不是旧行为的 149ms
+    let source = timeline_with_gap(
+        40.0,
+        Some(60.0),
+        vec![
+            press_sustain(0.0, &["KeyA"], 30.0, 100.0),
+            press(150.0, &["KeyA"], 30.0),
+        ],
+    );
+    let execution = build(&source, ExecutionParams::default());
+    assert_eq!(
+        execution.events,
+        vec![
+            event(0.0, &[], &["KeyA"]),
+            event(90.0, &["KeyA"], &[]),
+            event(150.0, &[], &["KeyA"]),
+            event(180.0, &["KeyA"], &[]),
+        ]
+    );
+}
+
+#[test]
+fn release_gap_never_shortens_hold_below_original_hold_ms() {
+    // hold_ms=30，两次按下间隔 50ms，release_gap_ms=40（40 > 50-30=20 的可用空间）：
+    // 按 gap 提前会把按住时长压到 10ms，必须被原始 hold_ms 的下限拦住，仍按住 30ms
+    let source = timeline_with_gap(
+        40.0,
+        Some(40.0),
+        vec![press(0.0, &["KeyA"], 30.0), press(50.0, &["KeyA"], 30.0)],
+    );
+    let execution = build(&source, ExecutionParams::default());
+    assert_eq!(
+        execution.events[1],
+        event(30.0, &["KeyA"], &[]),
+        "按住时长不应短于原始 hold_ms"
+    );
+}
+
+#[test]
+fn rejects_invalid_release_gap_ms() {
+    let cases = [
+        (-1.0, "松开间隔必须大于等于 0"),
+        (f64::NAN, "松开间隔必须大于等于 0"),
+    ];
+    for (value, message) in cases {
+        let source = timeline_with_gap(40.0, Some(value), vec![press(0.0, &["KeyA"], 30.0)]);
+        let error = build_error(&source, ExecutionParams::default());
+        assert_eq!(error.code, ErrorCode::TimelineInvalid);
+        assert_eq!(error.message, message);
+    }
+}
+
+#[test]
+fn loop_wrap_truncates_release_without_shrinking_period() {
+    // 单键、长音撑到 190ms 的循环：回卷截短应把 up 提前到 130ms（190-60），
+    // 但 execution.duration_ms（调度器实际采用的循环周期）不能因此跟着变小
+    let source = timeline_with_gap(
+        40.0,
+        Some(60.0),
+        vec![press_sustain(0.0, &["KeyA"], 10.0, 190.0)],
+    );
+    let execution = build(&source, with_range(0.0, f64::INFINITY, true));
+    assert_eq!(execution.dropped, 0);
+    assert_eq!(
+        execution.events,
+        vec![event(0.0, &[], &["KeyA"]), event(130.0, &["KeyA"], &[])]
+    );
+    assert_eq!(execution.duration_ms, 190.0, "循环周期不应因回卷截短而变小");
 }
 
 #[test]

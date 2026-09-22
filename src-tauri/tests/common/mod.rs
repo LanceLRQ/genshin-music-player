@@ -165,6 +165,7 @@ pub fn key_timeline(presses: &[(f64, &str)], duration_ms: f64) -> KeyTimeline {
                 sustain_ms: None,
             })
             .collect(),
+        release_gap_ms: None,
     }
 }
 

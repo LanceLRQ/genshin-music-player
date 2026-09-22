@@ -16,6 +16,7 @@ fn key_timeline_reads_camel_case_json_from_frontend() {
         ]
     }))
     .unwrap();
+    assert_eq!(timeline.release_gap_ms, None, "缺省时反序列化为 None");
     assert_eq!(
         timeline,
         KeyTimeline {
@@ -36,6 +37,7 @@ fn key_timeline_reads_camel_case_json_from_frontend() {
                     sustain_ms: None,
                 },
             ],
+            release_gap_ms: None,
         }
     );
 }

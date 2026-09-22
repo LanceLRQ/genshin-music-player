@@ -102,6 +102,7 @@ pub fn execution_with(
                 sustain_ms: None,
             })
             .collect(),
+        release_gap_ms: None,
     };
     Arc::new(build_execution(&timeline, &params).expect("测试时间线应当合法"))
 }

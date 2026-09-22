@@ -21,7 +21,12 @@ export interface AdaptOptions {
   useNoteDuration?: boolean;
   /** 固定时长模式（useNoteDuration 关闭）下的按住时长（10–4000ms），生效范围同 useNoteDuration */
   holdMsOverride?: number;
+  /** 长音模式下同键再次按下前至少提前松开的毫秒数（0–200），避免游戏漏读紧跟着的下一次按下；生效范围同 useNoteDuration */
+  releaseGapMs?: number;
 }
+
+/** 约 60 帧下 2 帧 */
+export const DEFAULT_RELEASE_GAP_MS = 40;
 
 export const DEFAULT_ADAPT_OPTIONS: Omit<AdaptOptions, 'tracks' | 'percussionSplitPitch'> = {
   transpose: 0,
@@ -47,6 +52,8 @@ export interface KeyTimeline {
   minRepeatGapMs: number;
   /** 按 tMs 升序 */
   presses: Press[];
+  /** 仅长音模式下设置，语义见 AdaptOptions.releaseGapMs */
+  releaseGapMs?: number;
 }
 
 export interface DropCounts {
