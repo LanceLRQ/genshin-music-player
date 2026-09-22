@@ -16,7 +16,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { groupInstrumentEntries, isBuiltinInstrumentId } from '@/core/instruments/registry';
+import { CUSTOM_GROUP_KEY, groupInstrumentEntries, isBuiltinInstrumentId } from '@/core/instruments/registry';
 import { INSTRUMENT_CATEGORY_LABELS, type InstrumentProfile, validateInstrumentProfile } from '@/core/model/instrument';
 import { midiToNoteName } from '@/core/music/pitch';
 import { useNavigationStore } from '@/stores/navigationStore';
@@ -70,7 +70,7 @@ export function InstrumentsPage() {
 
   const selected = entries.find((entry) => entry.profile.id === selectedId);
   const groups = groupInstrumentEntries(entries);
-  const hasCustomGroup = groups.some((group) => group.key === 'user-custom');
+  const hasCustomGroup = groups.some((group) => group.key === CUSTOM_GROUP_KEY);
 
   /** 有未保存修改时，先弹确认再执行 action */
   const requestLeave = (action: () => void) => {

@@ -203,4 +203,14 @@ describe('AdaptOptionsPanel（按住控制资格）', () => {
     await user.click(resetButton);
     expect(props.onChange).toHaveBeenLastCalledWith(expect.objectContaining({ holdMsOverride: undefined }));
   });
+
+  it('locked 时按住控制全部禁用：音长开关、按住时长滑块与输入框、跟随乐器按钮', () => {
+    renderPanel({ profile: lyre, builtin: false, locked: true, options: { ...options, holdMsOverride: 100 } });
+    // Radix Switch 的禁用直接反映为原生 disabled 属性
+    expect(screen.getByRole('switch', { name: '按 MIDI 音长按键' })).toBeDisabled();
+    // Radix Slider 的禁用体现为 data-disabled（Thumb 不是原生 button，没有 disabled 属性）
+    expect(screen.getByRole('slider')).toHaveAttribute('data-disabled');
+    expect(screen.getByRole('spinbutton', { name: '按住时长（毫秒）' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: /跟随乐器/ })).toBeDisabled();
+  });
 });

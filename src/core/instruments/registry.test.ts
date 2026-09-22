@@ -1,8 +1,11 @@
 import { describe, expect, it } from 'vitest';
+import { adapt } from '../adapter/adapt';
 import type { InstrumentProfile } from '../model/instrument';
+import type { Score } from '../model/score';
 import type { AdaptOptions } from '../model/timeline';
 import {
   BUILTIN_INSTRUMENTS,
+  CUSTOM_GROUP_KEY,
   findInstrument,
   groupInstrumentEntries,
   isBuiltinInstrumentId,
@@ -140,6 +143,40 @@ describe('内置乐器', () => {
   });
 });
 
+describe('内置乐器的 timing.sustain', () => {
+  it('晚风圆号、沃雅妮莎（游戏里按住持续发声）timing.sustain 为 true，其余内置乐器为 false', () => {
+    for (const profile of BUILTIN_INSTRUMENTS) {
+      const expectSustain = profile.id === 'evening-horn' || profile.id === 'two-row-prototype';
+      expect(profile.timing.sustain, profile.id).toBe(expectSustain);
+    }
+  });
+
+  it('默认 options（不设 useNoteDuration）演奏晚风圆号 / 沃雅妮莎：跟随乐器 sustain，音长超过 holdMs 的音带 sustainMs', () => {
+    const defaultOptions: AdaptOptions = {
+      tracks: ['t0'],
+      transpose: 0,
+      octaveShift: 0,
+      blackKeyPolicy: 'skip',
+      outOfRangePolicy: 'fold',
+      maxPolyphony: 3,
+      chordWindowMs: 15,
+    };
+    for (const id of ['evening-horn', 'two-row-prototype']) {
+      const profile = builtin(id);
+      const pitch = profile.rows[0].keys[0].pitch!;
+      const longNoteMs = profile.timing.holdMs + 200;
+      const score: Score = {
+        meta: { title: '测试', source: 'json' },
+        tracks: [{ id: 't0', name: 't0', isDrum: false, notes: [{ startMs: 0, durationMs: longNoteMs, pitch, velocity: 0.8 }] }],
+      };
+      const result = adapt(score, profile, defaultOptions);
+      expect(result.timeline.presses).toHaveLength(1);
+      expect(result.timeline.presses[0].holdMs).toBe(profile.timing.holdMs);
+      expect(result.timeline.presses[0].sustainMs, id).toBe(longNoteMs);
+    }
+  });
+});
+
 describe('mergeInstruments', () => {
   const custom = (id: string, name = id): InstrumentProfile => ({ ...builtin('windsong-lyre'), id, name, status: 'unverified' });
 
@@ -226,16 +263,16 @@ describe('groupInstrumentEntries', () => {
   it('没有自定义乐器时省略自定义组', () => {
     const { entries } = mergeInstruments([]);
     const groups = groupInstrumentEntries(entries);
-    expect(groups.some((g) => g.key === 'user-custom')).toBe(false);
+    expect(groups.some((g) => g.key === CUSTOM_GROUP_KEY)).toBe(false);
   });
 
-  it('自定义乐器统一归入自定义组（组 key 为 user-custom，与内置分类 custom 区分），即使复制自琴类内置乐器也不进入琴类组', () => {
+  it('自定义乐器统一归入自定义组（组 key 为 CUSTOM_GROUP_KEY，与内置分类 custom 区分），即使复制自琴类内置乐器也不进入琴类组', () => {
     const { entries } = mergeInstruments([custom('my-lyre', '甲'), custom('my-lyre-2', '乙')]);
     const groups = groupInstrumentEntries(entries);
     const lyreGroup = groups.find((g) => g.key === 'lyre')!;
     expect(lyreGroup.entries.map((e) => e.profile.id)).not.toContain('my-lyre');
     const customGroup = groups.at(-1)!;
-    expect(customGroup).toEqual({ key: 'user-custom', label: '自定义', entries: expect.any(Array) });
+    expect(customGroup).toEqual({ key: CUSTOM_GROUP_KEY, label: '自定义', entries: expect.any(Array) });
     expect(customGroup.entries.map((e) => e.profile.id)).toEqual(['my-lyre', 'my-lyre-2']);
   });
 });

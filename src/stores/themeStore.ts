@@ -1,13 +1,11 @@
 import { create } from 'zustand';
-import type { ThemeMode } from '@/lib/theme';
+import { THEME_MODES, type ThemeMode } from '@/lib/theme';
 
 /** 主题模式保存在 localStorage 的键名 */
 export const THEME_MODE_STORAGE_KEY = 'themeMode';
 
-const MODE_CYCLE: ThemeMode[] = ['system', 'light', 'dark'];
-
 function isThemeMode(value: string | null): value is ThemeMode {
-  return value === 'system' || value === 'light' || value === 'dark';
+  return value !== null && (THEME_MODES as readonly string[]).includes(value);
 }
 
 function readMode(): ThemeMode {
@@ -22,7 +20,7 @@ function readMode(): ThemeMode {
 export interface ThemeState {
   mode: ThemeMode;
   setMode: (mode: ThemeMode) => void;
-  /** 循环切换：跟随系统 → 浅色 → 深色 → 跟随系统 */
+  /** 循环切换：跟随系统 → 浅色 → 深色 → 跟随系统（循环顺序即 THEME_MODES 数组顺序） */
   cycleMode: () => void;
 }
 
@@ -38,7 +36,7 @@ export const useThemeStore = create<ThemeState>()((set, get) => ({
   },
   cycleMode: () => {
     const current = get().mode;
-    const next = MODE_CYCLE[(MODE_CYCLE.indexOf(current) + 1) % MODE_CYCLE.length];
+    const next = THEME_MODES[(THEME_MODES.indexOf(current) + 1) % THEME_MODES.length];
     get().setMode(next);
   },
 }));

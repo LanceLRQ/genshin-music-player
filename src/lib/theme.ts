@@ -1,7 +1,8 @@
 const DARK_QUERY = '(prefers-color-scheme: dark)';
 
 /** 主题模式：跟随系统、固定浅色、固定深色 */
-export type ThemeMode = 'system' | 'light' | 'dark';
+export const THEME_MODES = ['system', 'light', 'dark'] as const;
+export type ThemeMode = (typeof THEME_MODES)[number];
 
 /**
  * 按主题模式设置根元素上的 dark class。
