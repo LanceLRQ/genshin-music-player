@@ -10,7 +10,7 @@ import twoRowPrototype from '../../../shared/instruments/two-row-prototype.json'
 import vintageLyre from '../../../shared/instruments/vintage-lyre.json';
 import windsongLyre from '../../../shared/instruments/windsong-lyre.json';
 import yucoLyre from '../../../shared/instruments/yuco-lyre.json';
-import { InstrumentProfileSchema, type InstrumentProfile } from '../model/instrument';
+import { INSTRUMENT_CATEGORIES, INSTRUMENT_CATEGORY_LABELS, InstrumentProfileSchema, type InstrumentProfile } from '../model/instrument';
 import type { AdaptOptions } from '../model/timeline';
 
 /** 模块加载时即做 schema 校验：内置配置写错会直接抛错，由测试兜底 */
@@ -59,6 +59,26 @@ export function mergeInstruments(custom: readonly InstrumentProfile[]): {
     entries.push({ profile, builtin: false });
   }
   return { entries, warnings };
+}
+
+export interface InstrumentGroup {
+  key: string;
+  label: string;
+  entries: InstrumentEntry[];
+}
+
+/** 乐器列表分组：内置乐器按 category（琴类 → 鼓类 → 圆号 → 人声）分组，自定义乐器统一归入「自定义」组放最后；
+ *  自定义组的 key 用 'user-custom'，避免和内置分类 'custom' 冲突；空组省略，组内保持原顺序 */
+export function groupInstrumentEntries(entries: readonly InstrumentEntry[]): InstrumentGroup[] {
+  const builtinGroups = new Map<string, InstrumentGroup>(
+    INSTRUMENT_CATEGORIES.map((category) => [category, { key: category, label: INSTRUMENT_CATEGORY_LABELS[category], entries: [] }]),
+  );
+  const customGroup: InstrumentGroup = { key: 'user-custom', label: '自定义', entries: [] };
+  for (const entry of entries) {
+    if (entry.builtin) builtinGroups.get(entry.profile.category)!.entries.push(entry);
+    else customGroup.entries.push(entry);
+  }
+  return [...builtinGroups.values(), customGroup].filter((group) => group.entries.length > 0);
 }
 
 export function findInstrument(entries: readonly InstrumentEntry[], id: string): InstrumentProfile | undefined {

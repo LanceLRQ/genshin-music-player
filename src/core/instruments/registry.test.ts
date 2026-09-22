@@ -4,6 +4,7 @@ import type { AdaptOptions } from '../model/timeline';
 import {
   BUILTIN_INSTRUMENTS,
   findInstrument,
+  groupInstrumentEntries,
   isBuiltinInstrumentId,
   mergeInstruments,
   stripHoldControlOptions,
@@ -193,6 +194,49 @@ describe('mergeInstruments', () => {
     expect(findInstrument(entries, 'nope')).toBeUndefined();
     expect(isBuiltinInstrumentId('festive-drum')).toBe(true);
     expect(isBuiltinInstrumentId('my-lyre')).toBe(false);
+  });
+});
+
+describe('groupInstrumentEntries', () => {
+  const custom = (id: string, name = id): InstrumentProfile => ({ ...builtin('windsong-lyre'), id, name, status: 'unverified' });
+
+  it('内置乐器按分类分组（琴类 → 鼓类 → 圆号 → 人声），组内保持原顺序', () => {
+    const { entries } = mergeInstruments([]);
+    const groups = groupInstrumentEntries(entries);
+    expect(groups.map((g) => [g.key, g.label, g.entries.length])).toEqual([
+      ['lyre', '琴类', 7],
+      ['drum', '鼓类', 3],
+      ['horn', '圆号', 1],
+      ['vocal', '人声', 1],
+    ]);
+    expect(groups[0].entries.map((e) => e.profile.id)).toEqual([
+      'windsong-lyre',
+      'floral-zither',
+      'vintage-lyre',
+      'yuco-lyre',
+      'harmony-clavier',
+      'sprightly-lyre',
+      'lingering-echo',
+    ]);
+    expect(groups[1].entries.map((e) => e.profile.id)).toEqual(['festive-drum', 'juju-drum', 'banquet-drum']);
+    expect(groups[2].entries.map((e) => e.profile.id)).toEqual(['evening-horn']);
+    expect(groups[3].entries.map((e) => e.profile.id)).toEqual(['two-row-prototype']);
+  });
+
+  it('没有自定义乐器时省略自定义组', () => {
+    const { entries } = mergeInstruments([]);
+    const groups = groupInstrumentEntries(entries);
+    expect(groups.some((g) => g.key === 'user-custom')).toBe(false);
+  });
+
+  it('自定义乐器统一归入自定义组（组 key 为 user-custom，与内置分类 custom 区分），即使复制自琴类内置乐器也不进入琴类组', () => {
+    const { entries } = mergeInstruments([custom('my-lyre', '甲'), custom('my-lyre-2', '乙')]);
+    const groups = groupInstrumentEntries(entries);
+    const lyreGroup = groups.find((g) => g.key === 'lyre')!;
+    expect(lyreGroup.entries.map((e) => e.profile.id)).not.toContain('my-lyre');
+    const customGroup = groups.at(-1)!;
+    expect(customGroup).toEqual({ key: 'user-custom', label: '自定义', entries: expect.any(Array) });
+    expect(customGroup.entries.map((e) => e.profile.id)).toEqual(['my-lyre', 'my-lyre-2']);
   });
 });
 

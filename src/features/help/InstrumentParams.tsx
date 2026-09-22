@@ -1,6 +1,7 @@
 import { Fragment, useState, type ReactNode } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { groupInstrumentEntries } from '@/core/instruments/registry';
 import { INSTRUMENT_CATEGORY_LABELS, type InstrumentProfile, voiceLabel } from '@/core/model/instrument';
 import { keyLabel } from '@/core/model/keycodes';
 import { midiToNoteName } from '@/core/music/pitch';
@@ -160,8 +161,7 @@ function KeyTables({ profile }: { profile: InstrumentProfile }) {
 export function InstrumentParams() {
   const entries = useInstrumentStore((state) => state.entries);
   const [selectedId, setSelectedId] = useState(entries[0]?.profile.id);
-  const builtin = entries.filter((entry) => entry.builtin);
-  const custom = entries.filter((entry) => !entry.builtin);
+  const groups = groupInstrumentEntries(entries);
   const profile = entries.find((entry) => entry.profile.id === selectedId)?.profile ?? entries[0]?.profile;
 
   if (!profile) return <p className="text-sm text-muted-foreground">还没有可用乐器。</p>;
@@ -178,24 +178,16 @@ export function InstrumentParams() {
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            <SelectGroup>
-              <SelectLabel>内置</SelectLabel>
-              {builtin.map((entry) => (
-                <SelectItem key={entry.profile.id} value={entry.profile.id}>
-                  {entry.profile.name}
-                </SelectItem>
-              ))}
-            </SelectGroup>
-            {custom.length > 0 && (
-              <SelectGroup>
-                <SelectLabel>自定义</SelectLabel>
-                {custom.map((entry) => (
+            {groups.map((group) => (
+              <SelectGroup key={group.key}>
+                <SelectLabel>{group.label}</SelectLabel>
+                {group.entries.map((entry) => (
                   <SelectItem key={entry.profile.id} value={entry.profile.id}>
                     {entry.profile.name}
                   </SelectItem>
                 ))}
               </SelectGroup>
-            )}
+            ))}
           </SelectContent>
         </Select>
       </div>

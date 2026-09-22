@@ -35,13 +35,16 @@ describe('InstrumentSelect', () => {
     expect(screen.getByRole('option', { name: /老旧的诗琴/ }).querySelector('svg')).toBeNull();
   });
 
-  it('内置与自定义分组展示，切换乐器后回调 id', async () => {
+  it('内置乐器按分类分组、自定义单独一组，切换乐器后回调 id', async () => {
     useInstrumentStore.setState({ entries: [...useInstrumentStore.getState().entries, customEntry] });
     const user = userEvent.setup();
     const onValueChange = vi.fn();
     render(<InstrumentSelect onValueChange={onValueChange} />);
     await user.click(screen.getByRole('combobox'));
-    expect(await screen.findByText('内置')).toBeInTheDocument();
+    expect(await screen.findByText('琴类')).toBeInTheDocument();
+    expect(screen.getByText('鼓类')).toBeInTheDocument();
+    expect(screen.getByText('圆号')).toBeInTheDocument();
+    expect(screen.getByText('人声')).toBeInTheDocument();
     expect(screen.getByText('自定义')).toBeInTheDocument();
     expect(screen.getByText('我的琴')).toBeInTheDocument();
     await user.click(screen.getByRole('option', { name: '我的琴' }));

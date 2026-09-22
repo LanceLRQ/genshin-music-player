@@ -1,5 +1,5 @@
 import { Copy, Download, FilePlus, Pencil, Timer, Trash2, TriangleAlert, Upload } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { Fragment, useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import {
@@ -16,7 +16,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { isBuiltinInstrumentId } from '@/core/instruments/registry';
+import { groupInstrumentEntries, isBuiltinInstrumentId } from '@/core/instruments/registry';
 import { INSTRUMENT_CATEGORY_LABELS, type InstrumentProfile, validateInstrumentProfile } from '@/core/model/instrument';
 import { midiToNoteName } from '@/core/music/pitch';
 import { useNavigationStore } from '@/stores/navigationStore';
@@ -69,8 +69,8 @@ export function InstrumentsPage() {
   const [warningsOpen, setWarningsOpen] = useState(false);
 
   const selected = entries.find((entry) => entry.profile.id === selectedId);
-  const builtinEntries = entries.filter((entry) => entry.builtin);
-  const customEntries = entries.filter((entry) => !entry.builtin);
+  const groups = groupInstrumentEntries(entries);
+  const hasCustomGroup = groups.some((group) => group.key === 'user-custom');
 
   /** 有未保存修改时，先弹确认再执行 action */
   const requestLeave = (action: () => void) => {
@@ -236,13 +236,17 @@ export function InstrumentsPage() {
           </Alert>
         )}
         <div className="flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto pr-1">
-          <p className="px-2 pt-1 text-xs text-muted-foreground">内置</p>
-          {builtinEntries.map((entry) => renderItem(entry.profile))}
-          <p className="px-2 pt-3 text-xs text-muted-foreground">自定义</p>
-          {customEntries.length > 0 ? (
-            customEntries.map((entry) => renderItem(entry.profile))
-          ) : (
-            <p className="px-2 py-1 text-sm text-muted-foreground">还没有自定义乐器</p>
+          {groups.map((group, index) => (
+            <Fragment key={group.key}>
+              <p className={`px-2 text-xs text-muted-foreground ${index === 0 ? 'pt-1' : 'pt-3'}`}>{group.label}</p>
+              {group.entries.map((entry) => renderItem(entry.profile))}
+            </Fragment>
+          ))}
+          {!hasCustomGroup && (
+            <>
+              <p className="px-2 pt-3 text-xs text-muted-foreground">自定义</p>
+              <p className="px-2 py-1 text-sm text-muted-foreground">还没有自定义乐器</p>
+            </>
           )}
         </div>
         <div className="mt-2 flex gap-2 border-t pt-3">
