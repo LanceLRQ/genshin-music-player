@@ -1,6 +1,6 @@
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from '@/components/ui/select';
-import type { InstrumentEntry } from '@/core/instruments/registry';
+import { groupInstrumentEntries, type InstrumentEntry } from '@/core/instruments/registry';
 import { useAdaptStore } from '@/stores/adaptStore';
 import { useInstrumentStore } from '@/stores/instrumentStore';
 
@@ -10,13 +10,12 @@ interface InstrumentSelectProps {
   onValueChange: (id: string) => void;
 }
 
-/** 目标乐器选择：内置与自定义分组，待实测乐器带徽章（设计 01 第 4.3 节） */
+/** 目标乐器选择：内置按分类分组、自定义单独一组，待实测乐器带徽章（设计 01 第 4.3 节） */
 export function InstrumentSelect({ disabled, onValueChange }: InstrumentSelectProps) {
   const entries = useInstrumentStore((state) => state.entries);
   const targetId = useAdaptStore((state) => state.targetId);
   const current = entries.find((entry) => entry.profile.id === targetId);
-  const builtin = entries.filter((entry) => entry.builtin);
-  const custom = entries.filter((entry) => !entry.builtin);
+  const groups = groupInstrumentEntries(entries);
   const renderItem = (entry: InstrumentEntry) => (
     <SelectItem key={entry.profile.id} value={entry.profile.id}>
       {entry.profile.name}
@@ -30,16 +29,12 @@ export function InstrumentSelect({ disabled, onValueChange }: InstrumentSelectPr
           <SelectValue />
         </SelectTrigger>
         <SelectContent>
-          <SelectGroup>
-            <SelectLabel>内置</SelectLabel>
-            {builtin.map(renderItem)}
-          </SelectGroup>
-          {custom.length > 0 && (
-            <SelectGroup>
-              <SelectLabel>自定义</SelectLabel>
-              {custom.map(renderItem)}
+          {groups.map((group) => (
+            <SelectGroup key={group.key}>
+              <SelectLabel>{group.label}</SelectLabel>
+              {group.entries.map(renderItem)}
             </SelectGroup>
-          )}
+          ))}
         </SelectContent>
       </Select>
       {current?.profile.status === 'unverified' && (

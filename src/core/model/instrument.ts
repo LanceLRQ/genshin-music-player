@@ -3,6 +3,19 @@ import { isKnownKeyCode } from './keycodes';
 
 export const INSTRUMENT_FILE_VERSION = 1;
 
+/** 乐器分类：只有 horn（圆号）与 vocal（人声）在游戏里按住会持续发声；custom 是自定义乐器的默认值，
+ *  也用于兼容旧版本没有 category 字段的配置文件 */
+export const INSTRUMENT_CATEGORIES = ['lyre', 'drum', 'horn', 'vocal', 'custom'] as const;
+export type InstrumentCategory = (typeof INSTRUMENT_CATEGORIES)[number];
+
+export const INSTRUMENT_CATEGORY_LABELS: Readonly<Record<InstrumentCategory, string>> = {
+  lyre: '琴类',
+  drum: '鼓类',
+  horn: '圆号',
+  vocal: '人声',
+  custom: '自定义',
+};
+
 export const InstrumentKeySchema = z.object(
   {
     code: z.string({ message: '键码必须是文本' }).min(1, '键码不能为空'),
@@ -93,6 +106,11 @@ export const InstrumentProfileSchema = z
       id: z.string({ message: 'ID 必须是文本' }).regex(/^[a-z0-9]+(-[a-z0-9]+)*$/, 'id 只能包含小写字母、数字和连字符'),
       name: z.string({ message: '名称必须是文本' }).min(1, '名称不能为空'),
       kind: z.enum(['pitched', 'percussion'], { message: '类型必须是 pitched（音高类）或 percussion（敲击类）' }),
+      category: z
+        .enum(INSTRUMENT_CATEGORIES, {
+          message: '分类必须是 lyre（琴类）、drum（鼓类）、horn（圆号）、vocal（人声）或 custom（自定义）之一',
+        })
+        .default('custom'),
       status: z.enum(['verified', 'unverified'], { message: '状态必须是 verified（已验证）或 unverified（待实测）' }),
       rows: z
         .array(InstrumentRowSchema, { message: '行配置必须是数组' })

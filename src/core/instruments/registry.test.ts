@@ -1,6 +1,18 @@
 import { describe, expect, it } from 'vitest';
+import { adapt } from '../adapter/adapt';
 import type { InstrumentProfile } from '../model/instrument';
-import { BUILTIN_INSTRUMENTS, findInstrument, isBuiltinInstrumentId, mergeInstruments } from './registry';
+import type { Score } from '../model/score';
+import type { AdaptOptions } from '../model/timeline';
+import {
+  BUILTIN_INSTRUMENTS,
+  CUSTOM_GROUP_KEY,
+  findInstrument,
+  groupInstrumentEntries,
+  isBuiltinInstrumentId,
+  mergeInstruments,
+  stripHoldControlOptions,
+  supportsHoldControl,
+} from './registry';
 
 const builtin = (id: string) => BUILTIN_INSTRUMENTS.find((p) => p.id === id)!;
 const pitchesOf = (profile: InstrumentProfile) => profile.rows.flatMap((row) => row.keys.map((key) => key.pitch as number));
@@ -131,6 +143,85 @@ describe('内置乐器', () => {
   });
 });
 
+describe('内置乐器的 timing.sustain', () => {
+  it('晚风圆号（游戏里按住持续发声）timing.sustain 为 true，其余内置乐器为 false（沃雅妮莎尾音本来就长，默认不开长音模式）', () => {
+    for (const profile of BUILTIN_INSTRUMENTS) {
+      const expectSustain = profile.id === 'evening-horn';
+      expect(profile.timing.sustain, profile.id).toBe(expectSustain);
+    }
+  });
+
+  it('默认 options（不设 useNoteDuration）演奏晚风圆号：跟随乐器 sustain，音长超过 holdMs 的音带 sustainMs', () => {
+    const defaultOptions: AdaptOptions = {
+      tracks: ['t0'],
+      transpose: 0,
+      octaveShift: 0,
+      blackKeyPolicy: 'skip',
+      outOfRangePolicy: 'fold',
+      maxPolyphony: 3,
+      chordWindowMs: 15,
+    };
+    const profile = builtin('evening-horn');
+    const pitch = profile.rows[0].keys[0].pitch!;
+    const longNoteMs = profile.timing.holdMs + 200;
+    const score: Score = {
+      meta: { title: '测试', source: 'json' },
+      tracks: [{ id: 't0', name: 't0', isDrum: false, notes: [{ startMs: 0, durationMs: longNoteMs, pitch, velocity: 0.8 }] }],
+    };
+    const result = adapt(score, profile, defaultOptions);
+    expect(result.timeline.presses).toHaveLength(1);
+    expect(result.timeline.presses[0].holdMs).toBe(profile.timing.holdMs);
+    expect(result.timeline.presses[0].sustainMs).toBe(longNoteMs);
+  });
+
+  it('默认 options 演奏沃雅妮莎：跟随乐器 sustain=false，不产生 sustainMs（按固定按住时长）', () => {
+    const defaultOptions: AdaptOptions = {
+      tracks: ['t0'],
+      transpose: 0,
+      octaveShift: 0,
+      blackKeyPolicy: 'skip',
+      outOfRangePolicy: 'fold',
+      maxPolyphony: 3,
+      chordWindowMs: 15,
+    };
+    const profile = builtin('two-row-prototype');
+    const pitch = profile.rows[0].keys[0].pitch!;
+    const longNoteMs = profile.timing.holdMs + 200;
+    const score: Score = {
+      meta: { title: '测试', source: 'json' },
+      tracks: [{ id: 't0', name: 't0', isDrum: false, notes: [{ startMs: 0, durationMs: longNoteMs, pitch, velocity: 0.8 }] }],
+    };
+    const result = adapt(score, profile, defaultOptions);
+    expect(result.timeline.presses).toHaveLength(1);
+    expect(result.timeline.presses[0].holdMs).toBe(profile.timing.holdMs);
+    expect(result.timeline.presses[0].sustainMs).toBeUndefined();
+  });
+
+  it('沃雅妮莎显式打开 useNoteDuration 仍可按音长演奏（用户手动打开）', () => {
+    const openOptions: AdaptOptions = {
+      tracks: ['t0'],
+      transpose: 0,
+      octaveShift: 0,
+      blackKeyPolicy: 'skip',
+      outOfRangePolicy: 'fold',
+      maxPolyphony: 3,
+      chordWindowMs: 15,
+      useNoteDuration: true,
+    };
+    const profile = builtin('two-row-prototype');
+    const pitch = profile.rows[0].keys[0].pitch!;
+    const longNoteMs = profile.timing.holdMs + 200;
+    const score: Score = {
+      meta: { title: '测试', source: 'json' },
+      tracks: [{ id: 't0', name: 't0', isDrum: false, notes: [{ startMs: 0, durationMs: longNoteMs, pitch, velocity: 0.8 }] }],
+    };
+    const result = adapt(score, profile, openOptions);
+    expect(result.timeline.presses).toHaveLength(1);
+    expect(result.timeline.presses[0].holdMs).toBe(profile.timing.holdMs);
+    expect(result.timeline.presses[0].sustainMs).toBe(longNoteMs);
+  });
+});
+
 describe('mergeInstruments', () => {
   const custom = (id: string, name = id): InstrumentProfile => ({ ...builtin('windsong-lyre'), id, name, status: 'unverified' });
 
@@ -185,5 +276,96 @@ describe('mergeInstruments', () => {
     expect(findInstrument(entries, 'nope')).toBeUndefined();
     expect(isBuiltinInstrumentId('festive-drum')).toBe(true);
     expect(isBuiltinInstrumentId('my-lyre')).toBe(false);
+  });
+});
+
+describe('groupInstrumentEntries', () => {
+  const custom = (id: string, name = id): InstrumentProfile => ({ ...builtin('windsong-lyre'), id, name, status: 'unverified' });
+
+  it('内置乐器按分类分组（琴类 → 鼓类 → 圆号 → 人声），组内保持原顺序', () => {
+    const { entries } = mergeInstruments([]);
+    const groups = groupInstrumentEntries(entries);
+    expect(groups.map((g) => [g.key, g.label, g.entries.length])).toEqual([
+      ['lyre', '琴类', 7],
+      ['drum', '鼓类', 3],
+      ['horn', '圆号', 1],
+      ['vocal', '人声', 1],
+    ]);
+    expect(groups[0].entries.map((e) => e.profile.id)).toEqual([
+      'windsong-lyre',
+      'floral-zither',
+      'vintage-lyre',
+      'yuco-lyre',
+      'harmony-clavier',
+      'sprightly-lyre',
+      'lingering-echo',
+    ]);
+    expect(groups[1].entries.map((e) => e.profile.id)).toEqual(['festive-drum', 'juju-drum', 'banquet-drum']);
+    expect(groups[2].entries.map((e) => e.profile.id)).toEqual(['evening-horn']);
+    expect(groups[3].entries.map((e) => e.profile.id)).toEqual(['two-row-prototype']);
+  });
+
+  it('没有自定义乐器时省略自定义组', () => {
+    const { entries } = mergeInstruments([]);
+    const groups = groupInstrumentEntries(entries);
+    expect(groups.some((g) => g.key === CUSTOM_GROUP_KEY)).toBe(false);
+  });
+
+  it('自定义乐器统一归入自定义组（组 key 为 CUSTOM_GROUP_KEY，与内置分类 custom 区分），即使复制自琴类内置乐器也不进入琴类组', () => {
+    const { entries } = mergeInstruments([custom('my-lyre', '甲'), custom('my-lyre-2', '乙')]);
+    const groups = groupInstrumentEntries(entries);
+    const lyreGroup = groups.find((g) => g.key === 'lyre')!;
+    expect(lyreGroup.entries.map((e) => e.profile.id)).not.toContain('my-lyre');
+    const customGroup = groups.at(-1)!;
+    expect(customGroup).toEqual({ key: CUSTOM_GROUP_KEY, label: '自定义', entries: expect.any(Array) });
+    expect(customGroup.entries.map((e) => e.profile.id)).toEqual(['my-lyre', 'my-lyre-2']);
+  });
+});
+
+describe('supportsHoldControl', () => {
+  it('自定义乐器始终支持，不论分类', () => {
+    expect(supportsHoldControl({ profile: builtin('windsong-lyre'), builtin: false })).toBe(true);
+    expect(supportsHoldControl({ profile: builtin('evening-horn'), builtin: false })).toBe(true);
+  });
+
+  it('内置圆号 / 人声乐器支持，其余内置乐器不支持', () => {
+    expect(supportsHoldControl({ profile: builtin('evening-horn'), builtin: true })).toBe(true);
+    expect(supportsHoldControl({ profile: builtin('two-row-prototype'), builtin: true })).toBe(true);
+    expect(supportsHoldControl({ profile: builtin('windsong-lyre'), builtin: true })).toBe(false);
+    expect(supportsHoldControl({ profile: builtin('festive-drum'), builtin: true })).toBe(false);
+  });
+});
+
+describe('stripHoldControlOptions', () => {
+  const baseOptions: AdaptOptions = {
+    tracks: ['t0'],
+    transpose: 0,
+    octaveShift: 0,
+    blackKeyPolicy: 'skip',
+    outOfRangePolicy: 'fold',
+    maxPolyphony: 3,
+    chordWindowMs: 15,
+    useNoteDuration: true,
+    holdMsOverride: 80,
+    releaseGapMs: 100,
+  };
+
+  it('不支持按住控制的乐器：剥离 useNoteDuration / holdMsOverride / releaseGapMs', () => {
+    const stripped = stripHoldControlOptions(baseOptions, { profile: builtin('windsong-lyre'), builtin: true });
+    expect(stripped.useNoteDuration).toBeUndefined();
+    expect(stripped.holdMsOverride).toBeUndefined();
+    expect(stripped.releaseGapMs).toBeUndefined();
+    expect(stripped).not.toBe(baseOptions);
+  });
+
+  it('支持按住控制的乐器：原样返回（同一引用）', () => {
+    const entry = { profile: builtin('evening-horn'), builtin: true };
+    expect(stripHoldControlOptions(baseOptions, entry)).toBe(baseOptions);
+  });
+
+  it('不支持按住控制但本来就没有这三项时，原样返回（同一引用）', () => {
+    const clean: AdaptOptions = { ...baseOptions, useNoteDuration: undefined, holdMsOverride: undefined, releaseGapMs: undefined };
+    const entry = { profile: builtin('windsong-lyre'), builtin: true };
+    expect(stripHoldControlOptions(clean, entry)).toBe(clean);
   });
 });

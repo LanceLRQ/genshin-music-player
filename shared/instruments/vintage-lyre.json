@@ -3,6 +3,7 @@
   "id": "vintage-lyre",
   "name": "老旧的诗琴",
   "kind": "pitched",
+  "category": "lyre",
   "status": "verified",
   "rows": [
     {

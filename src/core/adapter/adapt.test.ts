@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { BUILTIN_INSTRUMENTS } from '../instruments/registry';
 import { InstrumentProfileSchema } from '../model/instrument';
 import type { Note, Score, Track } from '../model/score';
-import { type AdaptOptions, type AdaptReport, DEFAULT_ADAPT_OPTIONS } from '../model/timeline';
+import { type AdaptOptions, type AdaptReport, DEFAULT_ADAPT_OPTIONS, DEFAULT_RELEASE_GAP_MS } from '../model/timeline';
 import { adapt, emptyReport, hitRate } from './adapt';
 
 const builtin = (id: string) => BUILTIN_INSTRUMENTS.find((p) => p.id === id)!;
@@ -123,7 +123,7 @@ describe('adapt：音高类乐器', () => {
     expect(result.report.total).toBe(1);
   });
 
-  it('sustain 乐器的 holdMs 取组内最长时值，且不小于配置值', () => {
+  it('sustain 乐器的按住时长仍取配置值，音长超过配置值的音额外带 sustainMs', () => {
     const sustainLyre = InstrumentProfileSchema.parse({
       ...lyre,
       id: 'sustain-lyre',
@@ -134,7 +134,8 @@ describe('adapt：音高类乐器', () => {
       sustainLyre,
       options(),
     );
-    expect(result.timeline.presses.map((p) => p.holdMs)).toEqual([400, 30]);
+    expect(result.timeline.presses.map((p) => p.holdMs)).toEqual([30, 30]);
+    expect(result.timeline.presses.map((p) => p.sustainMs)).toEqual([400, undefined]);
   });
 
   it('带 voice 的音符在音高类乐器上计入 unmappedDrum', () => {
@@ -365,5 +366,83 @@ describe('adapt：和弦键匹配（M6）', () => {
     const result = adapt(scoreOf(track('t0', [note(0, 60), note(0, 64), note(0, 67)])), lyre, options());
     expect(result.report.chordHits).toBe(0);
     expect(result.report.chordFallbacks).toBe(0);
+  });
+});
+
+describe('adapt：按住时长与音长按键', () => {
+  it('holdMsOverride 覆盖乐器配置的按住时长', () => {
+    const result = adapt(scoreOf(track('t0', [note(0, 60), note(500, 62)])), lyre, options({ holdMsOverride: 80 }));
+    expect(result.timeline.presses.map((p) => p.holdMs)).toEqual([80, 80]);
+  });
+
+  it('useNoteDuration 打开后，音长超过按住时长的音附带 sustainMs，未超过的不带', () => {
+    const result = adapt(
+      scoreOf(track('t0', [note(0, 60, 400), note(500, 62, 10)])),
+      lyre,
+      options({ useNoteDuration: true }),
+    );
+    expect(result.timeline.presses).toEqual([
+      { tMs: 0, codes: ['KeyA'], holdMs: 30, sustainMs: 400 },
+      { tMs: 500, codes: ['KeyS'], holdMs: 30 },
+    ]);
+  });
+
+  it('按音长模式忽略 holdMsOverride：兜底取乐器配置的按住时长', () => {
+    const result = adapt(
+      scoreOf(track('t0', [note(0, 60, 80), note(500, 62, 200)])),
+      lyre,
+      options({ useNoteDuration: true, holdMsOverride: 100 }),
+    );
+    expect(result.timeline.presses).toEqual([
+      { tMs: 0, codes: ['KeyA'], holdMs: 30, sustainMs: 80 },
+      { tMs: 500, codes: ['KeyS'], holdMs: 30, sustainMs: 200 },
+    ]);
+  });
+
+  it('sustain 乐器默认按音长；useNoteDuration 显式关闭后改为固定按住时长', () => {
+    const sustainLyre = InstrumentProfileSchema.parse({
+      ...lyre,
+      id: 'sustain-lyre-override',
+      timing: { ...lyre.timing, sustain: true },
+    });
+    const score = scoreOf(track('t0', [note(0, 60, 500)]));
+    expect(adapt(score, sustainLyre, options({ holdMsOverride: 100 })).timeline.presses).toEqual([
+      { tMs: 0, codes: ['KeyA'], holdMs: 30, sustainMs: 500 },
+    ]);
+    expect(adapt(score, sustainLyre, options({ useNoteDuration: false, holdMsOverride: 100 })).timeline.presses).toEqual([
+      { tMs: 0, codes: ['KeyA'], holdMs: 100 },
+    ]);
+  });
+
+  it('和弦键路径不设置 sustainMs：固定时长模式取覆盖值，按音长模式取乐器配置值', () => {
+    const chordLyre = {
+      ...structuredClone(lyre),
+      rows: [{ label: '和弦', keys: [{ chord: [48, 52, 55], label: 'C', code: 'KeyQ' }] }, ...lyre.rows],
+    } as typeof lyre;
+    const score = scoreOf(track('t0', [note(0, 60, 999), note(0, 64, 999), note(0, 67, 999)]));
+    expect(adapt(score, chordLyre, options({ holdMsOverride: 50 })).timeline.presses).toEqual([
+      { tMs: 0, codes: ['KeyQ'], holdMs: 50 },
+    ]);
+    expect(adapt(score, chordLyre, options({ useNoteDuration: true, holdMsOverride: 50 })).timeline.presses).toEqual([
+      { tMs: 0, codes: ['KeyQ'], holdMs: 30 },
+    ]);
+  });
+
+  it('durationMs 取 tMs + max(holdMs, sustainMs)', () => {
+    const result = adapt(scoreOf(track('t0', [note(0, 60, 500)])), lyre, options({ useNoteDuration: true }));
+    expect(result.timeline.durationMs).toBe(500);
+  });
+
+  it('长音模式下 timeline.releaseGapMs 默认取 DEFAULT_RELEASE_GAP_MS，显式传入时优先生效', () => {
+    const score = scoreOf(track('t0', [note(0, 60, 500)]));
+    const withDefault = adapt(score, lyre, options({ useNoteDuration: true }));
+    expect(withDefault.timeline.releaseGapMs).toBe(DEFAULT_RELEASE_GAP_MS);
+    const withOverride = adapt(score, lyre, options({ useNoteDuration: true, releaseGapMs: 80 }));
+    expect(withOverride.timeline.releaseGapMs).toBe(80);
+  });
+
+  it('固定时长模式下 timeline 不带 releaseGapMs 这个 key', () => {
+    const result = adapt(scoreOf(track('t0', [note(0, 60, 500)])), lyre, options({ useNoteDuration: false }));
+    expect('releaseGapMs' in result.timeline).toBe(false);
   });
 });

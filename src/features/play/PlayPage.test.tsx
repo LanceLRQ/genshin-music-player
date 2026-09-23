@@ -6,6 +6,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { previewPlayer } from '@/audio/previewPlayer';
 import { BUILTIN_INSTRUMENTS } from '@/core/instruments/registry';
 import type { Score } from '@/core/model/score';
+import type { KeyTimeline } from '@/core/model/timeline';
 import { DEFAULT_SETTINGS, type ExecutionTimeline } from '@/ipc/types';
 import { useAdaptStore } from '@/stores/adaptStore';
 import { useScoreStore } from '@/stores/scoreStore';
@@ -49,6 +50,16 @@ function mockBackend() {
     return cmd === 'build_execution' ? execution : null;
   });
   return calls;
+}
+
+/** 同 mockBackend，但连同每次调用的入参一起记录，供检查送去后端的 KeyTimeline */
+function mockBackendCapture() {
+  const entries: { cmd: string; payload?: unknown }[] = [];
+  mockIPC((cmd, payload) => {
+    entries.push({ cmd, payload });
+    return cmd === 'build_execution' ? execution : null;
+  });
+  return entries;
 }
 
 beforeEach(() => {
@@ -236,6 +247,31 @@ describe('PlayPage', () => {
     expect(useTransportStore.getState().previewing).toBe(false);
     expect(useTransportStore.getState().solo).toEqual({ mode: 'play', trackId: 't0' });
     await waitFor(() => expect(calls).toContain('play'));
+  });
+
+  it('单轨演奏前剥离目标乐器不支持的按住控制残留参数（风物之诗琴不支持，见 supportsHoldControl）', async () => {
+    const entries = mockBackendCapture();
+    useScoreStore.getState().setScore(score);
+    useAdaptStore.getState().resetToRecommended(score, lyre);
+    // 模拟残留的按住控制参数（例如从支持按住控制的乐器切换回来后未清理）
+    act(() =>
+      useAdaptStore.getState().setOptions({ ...useAdaptStore.getState().options!, useNoteDuration: true, holdMsOverride: 500 }),
+    );
+    const user = userEvent.setup();
+    render(<PlayPage />);
+    const soloButton = await screen.findByRole('button', { name: `单独演奏 ${score.tracks[0].name}` });
+    await waitFor(() => expect(soloButton).toBeEnabled());
+    await user.click(soloButton);
+    await waitFor(() => expect(entries.some((entry) => entry.cmd === 'play')).toBe(true));
+    // 单轨演奏发起的 build_execution 是 play 命令之前最近一次；解析它送去的 KeyTimeline
+    const playIndex = entries.findIndex((entry) => entry.cmd === 'play');
+    const soloBuild = [...entries.slice(0, playIndex)].reverse().find((entry) => entry.cmd === 'build_execution');
+    const timeline = (soloBuild?.payload as { timeline: KeyTimeline } | undefined)?.timeline;
+    expect(timeline).toBeDefined();
+    for (const press of timeline!.presses) {
+      expect(press.holdMs).toBe(lyre.timing.holdMs);
+      expect(press.sustainMs).toBeUndefined();
+    }
   });
 
   it('演奏进行中导入菜单与目标乐器禁用', () => {

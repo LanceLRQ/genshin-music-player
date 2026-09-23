@@ -3,6 +3,7 @@
   "id": "windsong-lyre",
   "name": "风物之诗琴",
   "kind": "pitched",
+  "category": "lyre",
   "status": "verified",
   "rows": [
     {

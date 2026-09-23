@@ -3,6 +3,7 @@
   "id": "evening-horn",
   "name": "晚风圆号",
   "kind": "pitched",
+  "category": "horn",
   "status": "verified",
   "rows": [
     {
@@ -30,5 +31,5 @@
       ]
     }
   ],
-  "timing": { "holdMs": 30, "minRepeatGapMs": 120, "sustain": false }
+  "timing": { "holdMs": 30, "minRepeatGapMs": 120, "sustain": true }
 }

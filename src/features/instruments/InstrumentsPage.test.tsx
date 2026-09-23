@@ -61,12 +61,16 @@ async function renderPage() {
 }
 
 describe('InstrumentsPage 列表与详情', () => {
-  it('列表分内置与自定义分组并显示徽章', async () => {
+  it('列表按分类分组（琴类/鼓类/圆号/人声/自定义）并显示徽章', async () => {
     await renderPage();
-    // 默认选中内置的风物之诗琴，所以"内置"出现两次（列表分组标签 + 详情元信息），
-    // "自定义"只出现一次（列表分组标签，自定义列表为空）
-    expect(screen.getAllByText('内置')).toHaveLength(2);
-    expect(screen.getAllByText('自定义')).toHaveLength(1);
+    // 列表按内置乐器分类分组，四个分类均有乐器；默认选中的风物之诗琴分类为琴类，
+    // 所以"琴类"出现两次（列表分组标签 + 详情元信息），其余分类只在列表分组标签出现一次
+    expect(screen.getAllByText('琴类')).toHaveLength(2);
+    expect(screen.getByText('鼓类')).toBeInTheDocument();
+    expect(screen.getByText('圆号')).toBeInTheDocument();
+    expect(screen.getByText('人声')).toBeInTheDocument();
+    // 没有自定义乐器时仍显示「自定义」分组标题与空状态
+    expect(screen.getByText('自定义')).toBeInTheDocument();
     expect(screen.getByText('还没有自定义乐器')).toBeInTheDocument();
     // 乐器名称同样在列表项与详情标题各出现一次
     expect(screen.getAllByText('风物之诗琴')).toHaveLength(2);

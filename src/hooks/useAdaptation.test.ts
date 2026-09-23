@@ -10,6 +10,7 @@ import { useAdaptation } from './useAdaptation';
 
 const lyre = BUILTIN_INSTRUMENTS[0];
 const yuco = BUILTIN_INSTRUMENTS.find((profile) => profile.id === 'yuco-lyre')!;
+const horn = BUILTIN_INSTRUMENTS.find((profile) => profile.category === 'horn')!;
 const score: Score = {
   meta: { title: '测试曲', source: 'midi', bpm: 60 },
   tracks: [
@@ -107,5 +108,38 @@ describe('useAdaptation', () => {
     expect(result.current.timeline?.presses[0]?.codes.length).toBe(3);
     expect(result.current.report?.chordHits).toBe(0);
     expect(result.current.report?.chordFallbacks).toBe(0);
+  });
+
+  it('非圆号 / 人声内置乐器：holdMsOverride 不生效（资格过滤在适配前剥离）', () => {
+    const { result } = renderHook(() => useAdaptation());
+    act(() => {
+      useScoreStore.getState().setScore(score);
+      useAdaptStore.getState().resetToRecommended(score, lyre);
+    });
+    act(() => vi.advanceTimersByTime(100));
+    act(() => {
+      const options = useAdaptStore.getState().options!;
+      useAdaptStore.getState().setOptions({ ...options, holdMsOverride: 200 });
+    });
+    act(() => vi.advanceTimersByTime(100));
+    expect(result.current.timeline?.presses.length).toBeGreaterThan(0);
+    expect(result.current.timeline?.presses.every((press) => press.holdMs === lyre.timing.holdMs)).toBe(true);
+  });
+
+  it('圆号类内置乐器：关闭音长按键后 holdMsOverride 生效', () => {
+    const { result } = renderHook(() => useAdaptation());
+    act(() => {
+      useScoreStore.getState().setScore(score);
+      useAdaptStore.getState().setTarget(horn.id);
+      useAdaptStore.getState().resetToRecommended(score, horn);
+    });
+    act(() => vi.advanceTimersByTime(100));
+    act(() => {
+      const options = useAdaptStore.getState().options!;
+      useAdaptStore.getState().setOptions({ ...options, useNoteDuration: false, holdMsOverride: 200 });
+    });
+    act(() => vi.advanceTimersByTime(100));
+    expect(result.current.timeline?.presses.length).toBeGreaterThan(0);
+    expect(result.current.timeline?.presses.every((press) => press.holdMs === 200 && press.sustainMs === undefined)).toBe(true);
   });
 });

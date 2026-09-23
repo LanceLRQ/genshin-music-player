@@ -9,6 +9,14 @@ fn press(t_ms: f64, codes: &[&str], hold_ms: f64) -> Press {
         t_ms,
         codes: codes.iter().map(|code| code.to_string()).collect(),
         hold_ms,
+        sustain_ms: None,
+    }
+}
+
+fn press_sustain(t_ms: f64, codes: &[&str], hold_ms: f64, sustain_ms: f64) -> Press {
+    Press {
+        sustain_ms: Some(sustain_ms),
+        ..press(t_ms, codes, hold_ms)
     }
 }
 
@@ -18,6 +26,18 @@ fn timeline(min_repeat_gap_ms: f64, presses: Vec<Press>) -> KeyTimeline {
         duration_ms: 0.0,
         min_repeat_gap_ms,
         presses,
+        release_gap_ms: None,
+    }
+}
+
+fn timeline_with_gap(
+    min_repeat_gap_ms: f64,
+    release_gap_ms: Option<f64>,
+    presses: Vec<Press>,
+) -> KeyTimeline {
+    KeyTimeline {
+        release_gap_ms,
+        ..timeline(min_repeat_gap_ms, presses)
     }
 }
 
@@ -196,6 +216,27 @@ fn speed_scales_press_time_but_not_hold() {
 }
 
 #[test]
+fn sustain_ms_scales_with_speed_but_never_below_hold_ms() {
+    // 2 倍速下 400ms 音长换算成 200ms，仍大于 hold_ms(30)，按 200ms 松开
+    let source = timeline(40.0, vec![press_sustain(1000.0, &["KeyA"], 30.0, 400.0)]);
+    let fast = build(&source, with_speed(2.0));
+    assert_eq!(
+        fast.events,
+        vec![event(500.0, &[], &["KeyA"]), event(700.0, &["KeyA"], &[])]
+    );
+
+    // 2 倍速下换算成 20ms，小于 hold_ms(30)，取 hold_ms
+    let short = timeline(40.0, vec![press_sustain(0.0, &["KeyA"], 30.0, 40.0)]);
+    let execution = build(&short, with_speed(2.0));
+    assert_eq!(execution.events[1].t_ms, 30.0);
+
+    // 没有 sustain_ms 的点按不随变速缩放（与既有行为一致）
+    let plain = timeline(40.0, vec![press(1000.0, &["KeyA"], 30.0)]);
+    let plain_execution = build(&plain, with_speed(2.0));
+    assert_eq!(plain_execution.events[1].t_ms, 530.0);
+}
+
+#[test]
 fn same_seed_gives_same_result_and_different_seed_differs() {
     let source = timeline(
         40.0,
@@ -316,6 +357,79 @@ fn speeding_up_can_make_repeats_too_dense() {
     let fast = build(&source, with_speed(2.0));
     assert_eq!(fast.dropped, 1);
     assert_eq!(fast.events.len(), 2);
+}
+
+#[test]
+fn release_gap_extends_lead_time_before_next_press_of_same_key() {
+    // 长音（sustain）撑到 100ms，下一次同键按下在 150ms；release_gap_ms=60 时
+    // 应提前到 150-60=90ms 松开，而不是旧行为的 149ms
+    let source = timeline_with_gap(
+        40.0,
+        Some(60.0),
+        vec![
+            press_sustain(0.0, &["KeyA"], 30.0, 100.0),
+            press(150.0, &["KeyA"], 30.0),
+        ],
+    );
+    let execution = build(&source, ExecutionParams::default());
+    assert_eq!(
+        execution.events,
+        vec![
+            event(0.0, &[], &["KeyA"]),
+            event(90.0, &["KeyA"], &[]),
+            event(150.0, &[], &["KeyA"]),
+            event(180.0, &["KeyA"], &[]),
+        ]
+    );
+}
+
+#[test]
+fn release_gap_never_shortens_hold_below_original_hold_ms() {
+    // hold_ms=30，两次按下间隔 50ms，release_gap_ms=40（40 > 50-30=20 的可用空间）：
+    // 按 gap 提前会把按住时长压到 10ms，必须被原始 hold_ms 的下限拦住，仍按住 30ms
+    let source = timeline_with_gap(
+        40.0,
+        Some(40.0),
+        vec![press(0.0, &["KeyA"], 30.0), press(50.0, &["KeyA"], 30.0)],
+    );
+    let execution = build(&source, ExecutionParams::default());
+    assert_eq!(
+        execution.events[1],
+        event(30.0, &["KeyA"], &[]),
+        "按住时长不应短于原始 hold_ms"
+    );
+}
+
+#[test]
+fn rejects_invalid_release_gap_ms() {
+    let cases = [
+        (-1.0, "松开间隔必须大于等于 0"),
+        (f64::NAN, "松开间隔必须大于等于 0"),
+    ];
+    for (value, message) in cases {
+        let source = timeline_with_gap(40.0, Some(value), vec![press(0.0, &["KeyA"], 30.0)]);
+        let error = build_error(&source, ExecutionParams::default());
+        assert_eq!(error.code, ErrorCode::TimelineInvalid);
+        assert_eq!(error.message, message);
+    }
+}
+
+#[test]
+fn loop_wrap_truncates_release_without_shrinking_period() {
+    // 单键、长音撑到 190ms 的循环：回卷截短应把 up 提前到 130ms（190-60），
+    // 但 execution.duration_ms（调度器实际采用的循环周期）不能因此跟着变小
+    let source = timeline_with_gap(
+        40.0,
+        Some(60.0),
+        vec![press_sustain(0.0, &["KeyA"], 10.0, 190.0)],
+    );
+    let execution = build(&source, with_range(0.0, f64::INFINITY, true));
+    assert_eq!(execution.dropped, 0);
+    assert_eq!(
+        execution.events,
+        vec![event(0.0, &[], &["KeyA"]), event(130.0, &["KeyA"], &[])]
+    );
+    assert_eq!(execution.duration_ms, 190.0, "循环周期不应因回卷截短而变小");
 }
 
 #[test]
@@ -544,6 +658,14 @@ fn rejects_invalid_press_fields() {
         (
             press(0.0, &["KeyA", "KeyA"], 30.0),
             "第 1 个按键包含重复的键码「KeyA」",
+        ),
+        (
+            press_sustain(0.0, &["KeyA"], 30.0, 0.0),
+            "第 1 个按键的按住音长必须大于 0",
+        ),
+        (
+            press_sustain(0.0, &["KeyA"], 30.0, f64::NAN),
+            "第 1 个按键的按住音长必须大于 0",
         ),
     ];
     for (bad, message) in cases {

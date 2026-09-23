@@ -3,6 +3,7 @@
   "id": "lingering-echo",
   "name": "余音",
   "kind": "pitched",
+  "category": "lyre",
   "status": "verified",
   "rows": [
     {

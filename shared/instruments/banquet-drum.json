@@ -3,6 +3,7 @@
   "id": "banquet-drum",
   "name": "绮筵之鼓",
   "kind": "percussion",
+  "category": "drum",
   "status": "verified",
   "rows": [
     {

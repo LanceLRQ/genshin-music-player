@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { previewPlayer } from '@/audio/previewPlayer';
 import { adapt } from '@/core/adapter/adapt';
+import { stripHoldControlOptions } from '@/core/instruments/registry';
 import type { Score } from '@/core/model/score';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -81,7 +82,8 @@ export function PlayPage() {
   const humanizeMs = useTransportStore((state) => state.humanizeMs);
   const volume = useTransportStore((state) => state.volume);
 
-  const profile = useMemo(() => entries.find((entry) => entry.profile.id === targetId)?.profile, [entries, targetId]);
+  const targetEntry = useMemo(() => entries.find((entry) => entry.profile.id === targetId), [entries, targetId]);
+  const profile = targetEntry?.profile;
   const locked = isPlayerActive(playerState);
   const hasTimeline = !!execution && execution.events.length > 0;
   const { timeline, report, rates } = useAdaptation();
@@ -254,13 +256,18 @@ export function PlayPage() {
     const transport = useTransportStore.getState();
     if (transport.previewing) await transport.stopPreview();
     const currentScore = useScoreStore.getState().score;
-    const currentProfile = useInstrumentStore
+    const currentEntry = useInstrumentStore
       .getState()
-      .entries.find((entry) => entry.profile.id === useAdaptStore.getState().targetId)?.profile;
+      .entries.find((entry) => entry.profile.id === useAdaptStore.getState().targetId);
     const currentOptions = useAdaptStore.getState().options;
-    if (!currentScore || !currentProfile || !currentOptions) return;
+    if (!currentScore || !currentEntry || !currentOptions) return;
+    const currentProfile = currentEntry.profile;
     const useChordKeys = useSettingsStore.getState().settings?.useChordKeys ?? true;
-    const single = adapt(currentScore, currentProfile, { ...currentOptions, useChordKeys, tracks: [trackId] });
+    const single = adapt(currentScore, currentProfile, {
+      ...stripHoldControlOptions(currentOptions, currentEntry),
+      useChordKeys,
+      tracks: [trackId],
+    });
     // 模拟发声下与单独试听同语义：solo 标记必须记为 preview，否则 stopPreview / finishPreview
     // 不会触发 endSolo，单轨结束后标记与单轨 execution 会永久残留并污染后续演奏
     const soloMode: SoloMode = soundOnly() ? 'preview' : mode;
@@ -373,6 +380,7 @@ export function PlayPage() {
                     <div className="flex min-w-0 flex-col gap-3">
                       <AdaptOptionsPanel
                         profile={profile}
+                        builtin={targetEntry?.builtin ?? true}
                         options={options}
                         locked={locked}
                         onChange={(next) => useAdaptStore.getState().setOptions(next)}

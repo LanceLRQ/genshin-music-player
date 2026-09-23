@@ -1,4 +1,4 @@
-import { BookOpen, type LucideIcon, Music, PanelLeft, Piano, Settings } from 'lucide-react';
+import { BookOpen, type LucideIcon, Monitor, Moon, Music, PanelLeft, Piano, Settings, Sun } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   Sidebar,
@@ -13,9 +13,11 @@ import {
   useSidebar,
 } from '@/components/ui/sidebar';
 import { STATUS_DOT_CLASS, isPlayerActive, playerStateLabel, playerStateTone } from '@/lib/playerStatus';
+import type { ThemeMode } from '@/lib/theme';
 import { cn } from '@/lib/utils';
 import { useEnvStore } from '@/stores/envStore';
 import { type PageId, useNavigationStore } from '@/stores/navigationStore';
+import { useThemeStore } from '@/stores/themeStore';
 import { useTransportStore } from '@/stores/transportStore';
 
 const NAV_ITEMS: { page: PageId; label: string; icon: LucideIcon }[] = [
@@ -70,7 +72,30 @@ function BackendStatus() {
   );
 }
 
-/** 左侧边栏：三个页面入口；底部一行显示后端与管理员状态 */
+const THEME_MODE_META: Record<ThemeMode, { label: string; icon: LucideIcon }> = {
+  system: { label: '跟随系统', icon: Monitor },
+  light: { label: '浅色', icon: Sun },
+  dark: { label: '深色', icon: Moon },
+};
+
+/** 主题切换按钮：点击循环切换跟随系统 / 浅色 / 深色；收起为图标模式时靠 tooltip 显示说明 */
+function ThemeToggleButton() {
+  const mode = useThemeStore((state) => state.mode);
+  const cycleMode = useThemeStore((state) => state.cycleMode);
+  const { label, icon: Icon } = THEME_MODE_META[mode];
+  const description = `切换主题（当前：${label}）`;
+
+  return (
+    <SidebarMenuItem>
+      <SidebarMenuButton tooltip={description} onClick={cycleMode}>
+        <Icon />
+        <span>主题：{label}</span>
+      </SidebarMenuButton>
+    </SidebarMenuItem>
+  );
+}
+
+/** 左侧边栏：三个页面入口；底部显示后端与管理员状态，以及主题切换按钮 */
 export function AppSidebar() {
   const page = useNavigationStore((state) => state.page);
   const navigate = useNavigationStore((state) => state.navigate);
@@ -108,8 +133,13 @@ export function AppSidebar() {
           </SidebarGroupContent>
         </SidebarGroup>
       </SidebarContent>
-      <SidebarFooter className="p-4 text-xs text-muted-foreground group-data-[collapsible=icon]:hidden">
-        <BackendStatus />
+      <SidebarFooter className="gap-2 p-0">
+        <div className="p-4 text-xs text-muted-foreground group-data-[collapsible=icon]:hidden">
+          <BackendStatus />
+        </div>
+        <SidebarMenu className="p-2">
+          <ThemeToggleButton />
+        </SidebarMenu>
       </SidebarFooter>
     </Sidebar>
   );

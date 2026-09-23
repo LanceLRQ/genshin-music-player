@@ -99,8 +99,10 @@ pub fn execution_with(
                 t_ms: *t_ms,
                 codes: codes(keys),
                 hold_ms: *hold_ms,
+                sustain_ms: None,
             })
             .collect(),
+        release_gap_ms: None,
     };
     Arc::new(build_execution(&timeline, &params).expect("测试时间线应当合法"))
 }
