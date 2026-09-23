@@ -96,7 +96,8 @@ fn builtin_layouts_keep_rows_pitches_and_timing() {
     assert_eq!(lyre.timing.min_repeat_gap_ms, 75.0);
 
     let two_row = find_builtin_instrument("two-row-prototype").unwrap();
-    assert_eq!(two_row.rows[1].keys[5].code, "KeyN");
+    // 2026-09-23 用户实测：低音行 la 为 H 键（原截图误读为 N）
+    assert_eq!(two_row.rows[1].keys[5].code, "KeyH");
 
     let drum = find_builtin_instrument("festive-drum").unwrap();
     assert_eq!(drum.rows[0].keys[0].code, "KeyS");
