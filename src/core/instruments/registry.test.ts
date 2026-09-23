@@ -55,12 +55,12 @@ describe('内置乐器', () => {
     expect(vintage.rows[0].keys.map((k) => k.pitch)).toEqual([72, 73, 75, 77, 79, 80, 82]);
   });
 
-  it('沃雅妮莎（两行人声乐器）14 键，低音行 la=N、ti=J（截图确认）', () => {
+  it('沃雅妮莎（两行人声乐器）14 键，低音行 la=H、ti=J（2026-09-23 用户实测：下排 ASDFGHJ）', () => {
     const twoRow = builtin('two-row-prototype');
     expect(twoRow.name).toBe('沃雅妮莎');
     expect(twoRow.rows).toHaveLength(2);
     expect(pitchesOf(twoRow)).toHaveLength(14);
-    expect(twoRow.rows[1].keys[5]).toEqual({ pitch: 57, code: 'KeyN' });
+    expect(twoRow.rows[1].keys[5]).toEqual({ pitch: 57, code: 'KeyH' });
     expect(twoRow.rows[1].keys[6]).toEqual({ pitch: 59, code: 'KeyJ' });
     expect(twoRow.status).toBe('verified');
   });

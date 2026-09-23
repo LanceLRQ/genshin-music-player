@@ -79,7 +79,7 @@ describe('parseKeyscore', () => {
   });
 
   it('@instrument 指定来源乐器', () => {
-    const result = parse('@instrument=two-row-prototype N');
+    const result = parse('@instrument=two-row-prototype H');
     expect(result.sourceInstrumentId).toBe('two-row-prototype');
     expect(result.score.tracks[0].notes[0].pitch).toBe(57);
   });
