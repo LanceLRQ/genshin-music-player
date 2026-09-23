@@ -144,14 +144,14 @@ describe('内置乐器', () => {
 });
 
 describe('内置乐器的 timing.sustain', () => {
-  it('晚风圆号（游戏里按住持续发声）timing.sustain 为 true，其余内置乐器为 false（沃雅妮莎尾音本来就长，默认不开长音模式）', () => {
+  it('晚风圆号、沃雅妮莎（游戏里按住持续发声）timing.sustain 为 true，其余内置乐器为 false（沃雅妮莎 2026-09-23 实测按音长效果最好，改回默认开）', () => {
     for (const profile of BUILTIN_INSTRUMENTS) {
-      const expectSustain = profile.id === 'evening-horn';
+      const expectSustain = profile.id === 'evening-horn' || profile.id === 'two-row-prototype';
       expect(profile.timing.sustain, profile.id).toBe(expectSustain);
     }
   });
 
-  it('默认 options（不设 useNoteDuration）演奏晚风圆号：跟随乐器 sustain，音长超过 holdMs 的音带 sustainMs', () => {
+  it('默认 options（不设 useNoteDuration）演奏晚风圆号 / 沃雅妮莎：跟随乐器 sustain，音长超过 holdMs 的音带 sustainMs', () => {
     const defaultOptions: AdaptOptions = {
       tracks: ['t0'],
       transpose: 0,
@@ -161,64 +161,19 @@ describe('内置乐器的 timing.sustain', () => {
       maxPolyphony: 3,
       chordWindowMs: 15,
     };
-    const profile = builtin('evening-horn');
-    const pitch = profile.rows[0].keys[0].pitch!;
-    const longNoteMs = profile.timing.holdMs + 200;
-    const score: Score = {
-      meta: { title: '测试', source: 'json' },
-      tracks: [{ id: 't0', name: 't0', isDrum: false, notes: [{ startMs: 0, durationMs: longNoteMs, pitch, velocity: 0.8 }] }],
-    };
-    const result = adapt(score, profile, defaultOptions);
-    expect(result.timeline.presses).toHaveLength(1);
-    expect(result.timeline.presses[0].holdMs).toBe(profile.timing.holdMs);
-    expect(result.timeline.presses[0].sustainMs).toBe(longNoteMs);
-  });
-
-  it('默认 options 演奏沃雅妮莎：跟随乐器 sustain=false，不产生 sustainMs（按固定按住时长）', () => {
-    const defaultOptions: AdaptOptions = {
-      tracks: ['t0'],
-      transpose: 0,
-      octaveShift: 0,
-      blackKeyPolicy: 'skip',
-      outOfRangePolicy: 'fold',
-      maxPolyphony: 3,
-      chordWindowMs: 15,
-    };
-    const profile = builtin('two-row-prototype');
-    const pitch = profile.rows[0].keys[0].pitch!;
-    const longNoteMs = profile.timing.holdMs + 200;
-    const score: Score = {
-      meta: { title: '测试', source: 'json' },
-      tracks: [{ id: 't0', name: 't0', isDrum: false, notes: [{ startMs: 0, durationMs: longNoteMs, pitch, velocity: 0.8 }] }],
-    };
-    const result = adapt(score, profile, defaultOptions);
-    expect(result.timeline.presses).toHaveLength(1);
-    expect(result.timeline.presses[0].holdMs).toBe(profile.timing.holdMs);
-    expect(result.timeline.presses[0].sustainMs).toBeUndefined();
-  });
-
-  it('沃雅妮莎显式打开 useNoteDuration 仍可按音长演奏（用户手动打开）', () => {
-    const openOptions: AdaptOptions = {
-      tracks: ['t0'],
-      transpose: 0,
-      octaveShift: 0,
-      blackKeyPolicy: 'skip',
-      outOfRangePolicy: 'fold',
-      maxPolyphony: 3,
-      chordWindowMs: 15,
-      useNoteDuration: true,
-    };
-    const profile = builtin('two-row-prototype');
-    const pitch = profile.rows[0].keys[0].pitch!;
-    const longNoteMs = profile.timing.holdMs + 200;
-    const score: Score = {
-      meta: { title: '测试', source: 'json' },
-      tracks: [{ id: 't0', name: 't0', isDrum: false, notes: [{ startMs: 0, durationMs: longNoteMs, pitch, velocity: 0.8 }] }],
-    };
-    const result = adapt(score, profile, openOptions);
-    expect(result.timeline.presses).toHaveLength(1);
-    expect(result.timeline.presses[0].holdMs).toBe(profile.timing.holdMs);
-    expect(result.timeline.presses[0].sustainMs).toBe(longNoteMs);
+    for (const id of ['evening-horn', 'two-row-prototype']) {
+      const profile = builtin(id);
+      const pitch = profile.rows[0].keys[0].pitch!;
+      const longNoteMs = profile.timing.holdMs + 200;
+      const score: Score = {
+        meta: { title: '测试', source: 'json' },
+        tracks: [{ id: 't0', name: 't0', isDrum: false, notes: [{ startMs: 0, durationMs: longNoteMs, pitch, velocity: 0.8 }] }],
+      };
+      const result = adapt(score, profile, defaultOptions);
+      expect(result.timeline.presses).toHaveLength(1);
+      expect(result.timeline.presses[0].holdMs).toBe(profile.timing.holdMs);
+      expect(result.timeline.presses[0].sustainMs, id).toBe(longNoteMs);
+    }
   });
 });
 
